@@ -13,10 +13,16 @@ class Usuario {
     }
 
     public function criar($dados) {
-        $sql = "INSERT INTO usuarios (username, senha, data_criacao)
-                VALUES (:username, :senha, NOW())";
+        $sql = "INSERT INTO usuarios (username, first_name, last_name, email, senha)
+                VALUES (:username, :first_name, :last_name, :email, :senha)";
         $stmt = $this->con->prepare($sql);
-        return $stmt->execute($dados);
+        return $stmt->execute([
+            ':username' => $dados['username'],
+            ':first_name' => $dados['first_name'] ?? null,
+            ':last_name' => $dados['last_name'] ?? null,
+            ':email' => $dados['email'] ?? null,
+            ':senha' => $dados['senha']
+        ]);
     }
 
     public function buscarPorId($id) {
@@ -26,9 +32,16 @@ class Usuario {
     }
 
     public function atualizar($id, $dados) {
-        $dados['id'] = $id;
-        $stmt = $this->con->prepare("UPDATE usuarios SET username=:username WHERE id=:id");
-        return $stmt->execute($dados);
+        $sql = "UPDATE usuarios SET username=:username, first_name=:first_name, 
+                last_name=:last_name, email=:email WHERE id=:id";
+        $stmt = $this->con->prepare($sql);
+        return $stmt->execute([
+            ':username' => $dados['username'],
+            ':first_name' => $dados['first_name'] ?? null,
+            ':last_name' => $dados['last_name'] ?? null,
+            ':email' => $dados['email'] ?? null,
+            ':id' => $id
+        ]);
     }
 
     public function deletar($id) {

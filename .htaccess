@@ -1,0 +1,34 @@
+RewriteEngine On
+# Base aponta para a pasta de APIs
+RewriteBase /POSTBLOG_WEB2/public/api/
+
+# ----------------------------
+# Posts
+# ----------------------------
+RewriteRule ^posts/?$ posts.php [QSA,L]
+RewriteRule ^posts/([0-9]+)/?$ posts.php?id=$1 [QSA,L]
+RewriteRule ^post/([0-9]+)/?$ posts.php?id=$1 [QSA,L]
+
+# ----------------------------
+# Categorias
+# ----------------------------
+RewriteRule ^categorias/?$ categorias.php [QSA,L]
+RewriteRule ^categorias/([0-9]+)/?$ categorias.php?id=$1 [QSA,L]
+
+# ----------------------------
+# Usuários
+# ----------------------------
+RewriteRule ^usuarios/?$ usuarios.php [QSA,L]
+RewriteRule ^usuarios/([0-9]+)/?$ usuarios.php?id=$1 [QSA,L]
+
+# ----------------------------
+# Comentários (arquivo com acento)
+# ----------------------------
+RewriteRule ^comentarios/?$ coment%C3%A1rios.php [QSA,L]
+RewriteRule ^comentarios/([0-9]+)/?$ coment%C3%A1rios.php?id=$1 [QSA,L]
+
+# ----------------------------
+# Perfis de Autor
+# ----------------------------
+RewriteRule ^perfis/?$ perfil_autor.php [QSA,L]
+RewriteRule ^perfis/([0-9]+)/?$ perfil_autor.php?id=$1 [QSA,L]
