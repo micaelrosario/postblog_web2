@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Comentários - BlogPost</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html"><i class="bi bi-newspaper"></i> BlogPost Manager</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="posts.html">Posts</a></li>
+                    <li class="nav-item"><a class="nav-link" href="categorias.html">Categorias</a></li>
+                    <li class="nav-item"><a class="nav-link" href="usuarios.html">Usuários</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="comentarios.html">Comentários</a></li>
+                    <li class="nav-item"><a class="nav-link" href="perfis.html">Perfis</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0"><i class="bi bi-chat-dots"></i> Lista de Comentários</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Post</th>
+                                        <th>Autor</th>
+                                        <th>Comentário</th>
+                                        <th>Data</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="listaComentarios">
+                                    <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> <span id="formTitulo">Criar Comentário</span></h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="formComentario">
+                            <input type="hidden" id="comentarioId" name="id">
+                            
+                            <div class="mb-3">
+                                <label for="post_id" class="form-label">Post</label>
+                                <select class="form-select" id="post_id" name="post_id" required>
+                                    <option value="">Selecione um post...</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="autor_id" class="form-label">Autor</label>
+                                <select class="form-select" id="autor_id" name="autor_id" required>
+                                    <option value="">Selecione um autor...</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="texto" class="form-label">Comentário</label>
+                                <textarea class="form-control" id="texto" name="texto" rows="4" required placeholder="Escreva o comentário aqui..."></textarea>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-info text-white" id="btnSubmit">
+                                    <i class="bi bi-check-circle"></i> Criar Comentário
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="btnCancelar" style="display:none;" onclick="cancelarEdicao()">
+                                    <i class="bi bi-x-circle"></i> Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast para notificações -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">Notificação</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastBody"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = './api/comentários.php';
+        let editando = false;
+
+        // Carregar posts e usuários nos selects
+        async function carregarSelects() {
+            const posts = await fetch('./api/posts.php').then(r => r.json());
+            const usuarios = await fetch('./api/usuarios.php').then(r => r.json());
+
+            const selectPost = document.getElementById('post_id');
+            const selectAutor = document.getElementById('autor_id');
+
+            posts.forEach(p => {
+                selectPost.innerHTML += `<option value="${p.id}">${p.titulo}</option>`;
+            });
+
+            usuarios.forEach(u => {
+                selectAutor.innerHTML += `<option value="${u.id}">${u.username || u.first_name || 'Usuário #' + u.id}</option>`;
+            });
+        }
+
+        // Listar comentários
+        async function listarComentarios() {
+            try {
+                const response = await fetch(API_URL);
+                const comentarios = await response.json();
+                
+                const tbody = document.getElementById('listaComentarios');
+                tbody.innerHTML = '';
+
+                if (comentarios.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum comentário encontrado</td></tr>';
+                    return;
+                }
+
+                comentarios.forEach(com => {
+                    const data = new Date(com.criado_em).toLocaleDateString('pt-BR');
+                    const textoResumido = com.texto.length > 50 ? com.texto.substring(0, 50) + '...' : com.texto;
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${com.id}</td>
+                            <td>Post #${com.post_id}</td>
+                            <td>Autor #${com.autor_id}</td>
+                            <td><small>${textoResumido}</small></td>
+                            <td>${data}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editarComentario(${com.id})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deletarComentario(${com.id})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                mostrarToast('Erro ao carregar comentários: ' + error.message, 'danger');
+            }
+        }
+
+        // Criar ou atualizar comentário
+        document.getElementById('formComentario').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const id = document.getElementById('comentarioId').value;
+
+            try {
+                let response;
+                if (editando && id) {
+                    // PUT - Atualizar
+                    const data = Object.fromEntries(formData);
+                    const params = new URLSearchParams(data).toString();
+                    response = await fetch(`${API_URL}?id=${id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: params
+                    });
+                } else {
+                    // POST - Criar
+                    response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                const resultado = await response.json();
+                mostrarToast(resultado.mensagem, resultado.sucesso ? 'success' : 'danger');
+                
+                if (resultado.sucesso) {
+                    e.target.reset();
+                    cancelarEdicao();
+                    listarComentarios();
+                }
+            } catch (error) {
+                mostrarToast('Erro: ' + error.message, 'danger');
+            }
+        });
+
+        // Editar comentário
+        async function editarComentario(id) {
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`);
+                const comentario = await response.json();
+
+                document.getElementById('comentarioId').value = comentario.id;
+                document.getElementById('post_id').value = comentario.post_id;
+                document.getElementById('autor_id').value = comentario.autor_id;
+                document.getElementById('texto').value = comentario.texto;
+
+                document.getElementById('formTitulo').textContent = 'Editar Comentário';
+                document.getElementById('btnSubmit').innerHTML = '<i class="bi bi-save"></i> Atualizar';
+                document.getElementById('btnCancelar').style.display = 'block';
+                editando = true;
+            } catch (error) {
+                mostrarToast('Erro ao carregar comentário: ' + error.message, 'danger');
+            }
+        }
+
+        // Deletar comentário
+        async function deletarComentario(id) {
+            if (!confirm('Tem certeza que deseja deletar este comentário?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
+                const resultado = await response.json();
+                
+                mostrarToast(resultado.mensagem, resultado.sucesso ? 'success' : 'danger');
+                if (resultado.sucesso) listarComentarios();
+            } catch (error) {
+                mostrarToast('Erro ao deletar: ' + error.message, 'danger');
+            }
+        }
+
+        // Cancelar edição
+        function cancelarEdicao() {
+            document.getElementById('formComentario').reset();
+            document.getElementById('comentarioId').value = '';
+            document.getElementById('formTitulo').textContent = 'Criar Comentário';
+            document.getElementById('btnSubmit').innerHTML = '<i class="bi bi-check-circle"></i> Criar Comentário';
+            document.getElementById('btnCancelar').style.display = 'none';
+            editando = false;
+        }
+
+        // Mostrar toast
+        function mostrarToast(mensagem, tipo = 'info') {
+            const toastEl = document.getElementById('toast');
+            const toastBody = document.getElementById('toastBody');
+            toastBody.textContent = mensagem;
+            toastEl.className = `toast bg-${tipo} text-white`;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+        // Inicializar
+        carregarSelects();
+        listarComentarios();
+    </script>
+</body>
+</html>

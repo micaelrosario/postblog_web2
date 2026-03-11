@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Categorias - BlogPost</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html"><i class="bi bi-newspaper"></i> BlogPost Manager</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="posts.html">Posts</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="categorias.html">Categorias</a></li>
+                    <li class="nav-item"><a class="nav-link" href="usuarios.html">Usuários</a></li>
+                    <li class="nav-item"><a class="nav-link" href="comentarios.html">Comentários</a></li>
+                    <li class="nav-item"><a class="nav-link" href="perfis.html">Perfis</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0"><i class="bi bi-tags"></i> Lista de Categorias</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nome</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="listaCategorias">
+                                    <tr><td colspan="3" class="text-center">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> <span id="formTitulo">Criar Categoria</span></h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="formCategoria">
+                            <input type="hidden" id="categoriaId" name="id">
+                            
+                            <div class="mb-3">
+                                <label for="nome" class="form-label">Nome da Categoria</label>
+                                <input type="text" class="form-control" id="nome" name="nome" required placeholder="Ex: Tecnologia">
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success" id="btnSubmit">
+                                    <i class="bi bi-check-circle"></i> Criar Categoria
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="btnCancelar" style="display:none;" onclick="cancelarEdicao()">
+                                    <i class="bi bi-x-circle"></i> Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast para notificações -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">Notificação</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastBody"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = './api/categorias.php';
+        let editando = false;
+
+        // Listar categorias
+        async function listarCategorias() {
+            try {
+                const response = await fetch(API_URL);
+                const categorias = await response.json();
+                
+                const tbody = document.getElementById('listaCategorias');
+                tbody.innerHTML = '';
+
+                if (categorias.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">Nenhuma categoria encontrada</td></tr>';
+                    return;
+                }
+
+                categorias.forEach(cat => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${cat.id}</td>
+                            <td><span class="badge bg-success">${cat.nome}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editarCategoria(${cat.id})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deletarCategoria(${cat.id})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                mostrarToast('Erro ao carregar categorias: ' + error.message, 'danger');
+            }
+        }
+
+        // Criar ou atualizar categoria
+        document.getElementById('formCategoria').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const id = document.getElementById('categoriaId').value;
+
+            try {
+                let response;
+                if (editando && id) {
+                    // PUT - Atualizar
+                    const data = Object.fromEntries(formData);
+                    const params = new URLSearchParams(data).toString();
+                    response = await fetch(`${API_URL}?id=${id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: params
+                    });
+                } else {
+                    // POST - Criar
+                    response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                const resultado = await response.json();
+                mostrarToast(resultado.mensagem, resultado.sucesso ? 'success' : 'danger');
+                
+                if (resultado.sucesso) {
+                    e.target.reset();
+                    cancelarEdicao();
+                    listarCategorias();
+                }
+            } catch (error) {
+                mostrarToast('Erro: ' + error.message, 'danger');
+            }
+        });
+
+        // Editar categoria
+        async function editarCategoria(id) {
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`);
+                const categoria = await response.json();
+
+                document.getElementById('categoriaId').value = categoria.id;
+                document.getElementById('nome').value = categoria.nome;
+
+                document.getElementById('formTitulo').textContent = 'Editar Categoria';
+                document.getElementById('btnSubmit').innerHTML = '<i class="bi bi-save"></i> Atualizar';
+                document.getElementById('btnCancelar').style.display = 'block';
+                editando = true;
+            } catch (error) {
+                mostrarToast('Erro ao carregar categoria: ' + error.message, 'danger');
+            }
+        }
+
+        // Deletar categoria
+        async function deletarCategoria(id) {
+            if (!confirm('Tem certeza que deseja deletar esta categoria?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
+                const resultado = await response.json();
+                
+                mostrarToast(resultado.mensagem, resultado.sucesso ? 'success' : 'danger');
+                if (resultado.sucesso) listarCategorias();
+            } catch (error) {
+                mostrarToast('Erro ao deletar: ' + error.message, 'danger');
+            }
+        }
+
+        // Cancelar edição
+        function cancelarEdicao() {
+            document.getElementById('formCategoria').reset();
+            document.getElementById('categoriaId').value = '';
+            document.getElementById('formTitulo').textContent = 'Criar Categoria';
+            document.getElementById('btnSubmit').innerHTML = '<i class="bi bi-check-circle"></i> Criar Categoria';
+            document.getElementById('btnCancelar').style.display = 'none';
+            editando = false;
+        }
+
+        // Mostrar toast
+        function mostrarToast(mensagem, tipo = 'info') {
+            const toastEl = document.getElementById('toast');
+            const toastBody = document.getElementById('toastBody');
+            toastBody.textContent = mensagem;
+            toastEl.className = `toast bg-${tipo} text-white`;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+        // Inicializar
+        listarCategorias();
+    </script>
+</body>
+</html>

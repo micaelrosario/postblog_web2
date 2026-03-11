@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Posts - BlogPost</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html"><i class="bi bi-newspaper"></i> BlogPost Manager</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="posts.html">Posts</a></li>
+                    <li class="nav-item"><a class="nav-link" href="categorias.html">Categorias</a></li>
+                    <li class="nav-item"><a class="nav-link" href="usuarios.html">Usuários</a></li>
+                    <li class="nav-item"><a class="nav-link" href="comentarios.html">Comentários</a></li>
+                    <li class="nav-item"><a class="nav-link" href="perfis.html">Perfis</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="bi bi-list-ul"></i> Lista de Posts</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Título</th>
+                                        <th>Autor</th>
+                                        <th>Categoria</th>
+                                        <th>Data</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="listaPosts">
+                                    <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> <span id="formTitulo">Criar Post</span></h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="formPost">
+                            <input type="hidden" id="postId" name="id">
+                            
+                            <div class="mb-3">
+                                <label for="titulo" class="form-label">Título</label>
+                                <input type="text" class="form-control" id="titulo" name="titulo" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="autor_id" class="form-label">Autor</label>
+                                <select class="form-select" id="autor_id" name="autor_id" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="categoria_id" class="form-label">Categoria</label>
+                                <select class="form-select" id="categoria_id" name="categoria_id" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="conteudo" class="form-label">Conteúdo</label>
+                                <textarea class="form-control" id="conteudo" name="conteudo" rows="5" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="imagem" class="form-label">URL da Imagem</label>
+                                <input type="text" class="form-control" id="imagem" name="imagem" placeholder="https://exemplo.com/imagem.jpg">
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success" id="btnSubmit">
+                                    <i class="bi bi-check-circle"></i> Criar Post
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="btnCancelar" style="display:none;" onclick="cancelarEdicao()">
+                                    <i class="bi bi-x-circle"></i> Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast para notificações -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">Notificação</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastBody"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = './api/posts.php';
+        let editando = false;
+
+        // Carregar usuários e categorias nos selects
+        async function carregarSelects() {
+            const usuarios = await fetch('./api/usuarios.php').then(r => r.json());
+            const categorias = await fetch('./api/categorias.php').then(r => r.json());
+
+            const selectAutor = document.getElementById('autor_id');
+            const selectCategoria = document.getElementById('categoria_id');
+
+            usuarios.forEach(u => {
+                selectAutor.innerHTML += `<option value="${u.id}">${u.username || u.first_name || 'Sem nome'}</option>`;
+            });
+
+            categorias.forEach(c => {
+                selectCategoria.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+            });
+        }
+
+        // Listar posts
+        async function listarPosts() {
+            try {
+                const response = await fetch(API_URL);
+                const posts = await response.json();
+                
+                const tbody = document.getElementById('listaPosts');
+                tbody.innerHTML = '';
+
+                if (posts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum post encontrado</td></tr>';
+                    return;
+                }
+
+                posts.forEach(post => {
+                    const data = new Date(post.criado_em).toLocaleDateString('pt-BR');
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${post.id}</td>
+                            <td>${post.titulo}</td>
+                            <td>${post.autor_id || 'N/A'}</td>
+                            <td>${post.categoria_id || 'N/A'}</td>
+                            <td>${data}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editarPost(${post.id})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deletarPost(${post.id})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                mostrarToast('Erro ao carregar posts: ' + error.message, 'danger');
+            }
+        }
+
+        // Criar ou atualizar post
+        document.getElementById('formPost').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const id = document.getElementById('postId').value;
+
+            try {
+                let response;
+                if (editando && id) {
+                    // PUT - Atualizar
+                    const data = Object.fromEntries(formData);
+                    const params = new URLSearchParams(data).toString();
+                    response = await fetch(`${API_URL}?id=${id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: params
+                    });
+                } else {
+                    // POST - Criar
+                    response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                const resultado = await response.json();
+                mostrarToast(resultado.mensagem, resultado.sucesso ? 'success' : 'danger');
+                
+                if (resultado.sucesso) {
+                    e.target.reset();
+                    cancelarEdicao();
+                    listarPosts();
+                }
+            } catch (error) {
+                mostrarToast('Erro: ' + error.message, 'danger');
+            }
+        });
+
+        // Editar post
+        async function editarPost(id) {
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`);
+                const post = await response.json();
+
+                document.getElementById('postId').value = post.id;
+                document.getElementById('titulo').value = post.titulo;
+                document.getElementById('autor_id').value = post.autor_id;
+                document.getElementById('categoria_id').value = post.categoria_id;
+                document.getElementById('conteudo').value = post.conteudo;
+                document.getElementById('imagem').value = post.imagem || '';
+
+                document.getElementById('formTitulo').textContent = 'Editar Post';
+                document.getElementById('btnSubmit').innerHTML = '<i class="bi bi-save"></i> Atualizar';
+                document.getElementById('btnCancelar').style.display = 'block';
+                editando = true;
+            } catch (error) {
+                mostrarToast('Erro ao carregar post: ' + error.message, 'danger');
+            }
+        }
+
+        // Deletar post
+        async function deletarPost(id) {
+            if (!confirm('Tem certeza que deseja deletar este post?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
+                const resultado = await response.json();
+                
+                mostrarToast(resultado.mensagem, resultado.sucesso ? 'success' : 'danger');
+                if (resultado.sucesso) listarPosts();
+            } catch (error) {
+                mostrarToast('Erro ao deletar: ' + error.message, 'danger');
+            }
+        }
+
+        // Cancelar edição
+        function cancelarEdicao() {
+            document.getElementById('formPost').reset();
+            document.getElementById('postId').value = '';
+            document.getElementById('formTitulo').textContent = 'Criar Post';
+            document.getElementById('btnSubmit').innerHTML = '<i class="bi bi-check-circle"></i> Criar Post';
+            document.getElementById('btnCancelar').style.display = 'none';
+            editando = false;
+        }
+
+        // Mostrar toast
+        function mostrarToast(mensagem, tipo = 'info') {
+            const toastEl = document.getElementById('toast');
+            const toastBody = document.getElementById('toastBody');
+            toastBody.textContent = mensagem;
+            toastEl.className = `toast bg-${tipo} text-white`;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+        // Inicializar
+        carregarSelects();
+        listarPosts();
+    </script>
+</body>
+</html>
