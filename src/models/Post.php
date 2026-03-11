@@ -1,5 +1,7 @@
 <?php
 
+defined('ACCESS') or die('Acesso negado');
+
 class Post {
 
     private $con;
@@ -61,5 +63,27 @@ class Post {
     public function deletar($id) {
         $stmt = $this->con->prepare("DELETE FROM post WHERE id = :id");
         return $stmt->execute(['id' => $id]);
+    }
+
+    // Padrão simples (para o roteador central): GET/POST/PUT/DELETE
+    public function get($id = null) {
+        if ($id === null) {
+            return $this->listar()->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        $row = $this->buscarPorId($id);
+        return $row ?: null;
+    }
+
+    public function post($dados) {
+        return $this->criar($dados);
+    }
+
+    public function put($id, $dados) {
+        return $this->atualizar($id, $dados);
+    }
+
+    public function delete($id) {
+        return $this->deletar($id);
     }
 }

@@ -1,25 +1,7 @@
 <?php
-class Database {
 
-    private $host = "localhost";
-    private $db_name = "blogpost";
-    private $username = "root";
-    private $password = "";
-    public $conn;
+declare(strict_types=1);
 
-    public function conectar(){
-        try {
-            $this->conn = new PDO(
-                "mysql:host={$this->host};dbname={$this->db_name}",
-                $this->username,
-                $this->password
-            );
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            return $this->conn;
+defined('ACCESS') or die('Acesso negado');
 
-        } catch (PDOException $e){
-            die("Erro: " . $e->getMessage());
-        }
-    }
-}
+require_once __DIR__ . '/../config/database.php';
