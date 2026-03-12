@@ -27,35 +27,75 @@ require_once __DIR__ . '/classes/Comentarios.php';
 require_once __DIR__ . '/classes/Perfis.php';
 require_once __DIR__ . '/classes/Api.php';
 
-$urlRaw = trim((string)($_GET['url'] ?? ''), "/ \t\n\r\0\x0B");
-$url = $urlRaw === '' ? [] : explode('/', $urlRaw);
+$urlBruta = (string)($_GET['url'] ?? '');
 
-// Compatibilidade: API via querystring (?resource=...)
-$resource = strtolower(trim((string)($_GET['resource'] ?? '')));
-if ($resource !== '' && $urlRaw === '') {
-    $url = ['api', $resource];
+if (trim($urlBruta) === '') {
+    $caminhoInfo = (string)($_SERVER['PATH_INFO'] ?? '');
+    if ($caminhoInfo !== '') {
+        $urlBruta = ltrim($caminhoInfo, '/');
+    } else {
+        $uriRequisicao = (string)($_SERVER['REQUEST_URI'] ?? '/');
+        $caminho = (string)(parse_url($uriRequisicao, PHP_URL_PATH) ?? '/');
+
+        $nomeScript = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+        $base = rtrim(str_replace('\\', '/', dirname($nomeScript)), '/');
+        if ($base === '/' || $base === '.') {
+            $base = '';
+        }
+
+        if ($base !== '' && str_starts_with($caminho, $base)) {
+            $caminho = substr($caminho, strlen($base));
+            if ($caminho === '') {
+                $caminho = '/';
+            }
+        }
+
+        $urlBruta = ltrim($caminho, '/');
+    }
 }
 
-$routeKey = strtolower((string)($url[0] ?? ''));
+$urlBruta = trim($urlBruta, "/ \t\n\r\0\x0B");
+
+// Compatibilidade: /index.php/rota
+if ($urlBruta === 'index.php') {
+    $urlBruta = '';
+} elseif (str_starts_with($urlBruta, 'index.php/')) {
+    $urlBruta = substr($urlBruta, strlen('index.php/'));
+}
+
+$segmentosUrl = $urlBruta === '' ? [] : explode('/', $urlBruta);
+
+// Compatibilidade: API via querystring (?resource=...)
+$recurso = strtolower(trim((string)($_GET['resource'] ?? '')));
+if ($recurso !== '' && $urlBruta === '') {
+    $segmentosUrl = ['api', $recurso];
+}
+
+$chaveRota = strtolower((string)($segmentosUrl[0] ?? ''));
 
 // Whitelist de rotas para evitar instanciar classes arbitrárias
-$routes = [
+$rotas = [
     '' => 'Posts',
     'home' => 'Posts',
+    'post' => 'Posts',
     'posts' => 'Posts',
+    'categoria' => 'Categorias',
     'categorias' => 'Categorias',
+    'usuario' => 'Usuarios',
     'usuarios' => 'Usuarios',
+    'comentario' => 'Comentarios',
     'comentarios' => 'Comentarios',
+    'perfil' => 'Perfis',
     'perfis' => 'Perfis',
     'api' => 'Api',
 ];
 
-$className = $routes[$routeKey] ?? null;
+$nomeClasse = $rotas[$chaveRota] ?? null;
 
-if ($className === null || !class_exists($className)) {
+if ($nomeClasse === null || !class_exists($nomeClasse)) {
     http_response_code(404);
 
-    if ($routeKey === 'api' || $resource !== '') {
+    if ($chaveRota === 'api' || $recurso !== '') {
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type');
@@ -74,17 +114,17 @@ if ($className === null || !class_exists($className)) {
     exit;
 }
 
-$controller = new $className();
+$controlador = new $nomeClasse();
 
-$method = strtolower((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
-if ($method === 'head') {
-    $method = 'get';
+$metodo = strtolower((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+if ($metodo === 'head') {
+    $metodo = 'get';
 }
 
-if (!method_exists($controller, $method)) {
+if (!method_exists($controlador, $metodo)) {
     http_response_code(405);
 
-    if ($routeKey === 'api' || $resource !== '') {
+    if ($chaveRota === 'api' || $recurso !== '') {
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type');
@@ -102,4 +142,4 @@ if (!method_exists($controller, $method)) {
     exit;
 }
 
-$controller->$method($url);
+$controlador->$metodo($segmentosUrl);

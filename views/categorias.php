@@ -2,10 +2,10 @@
 
 defined('ACCESS') or die('Acesso negado');
 
-$editId = (int)($_GET['edit'] ?? 0);
-$editCategoria = $editId > 0 ? $categoriaModel->get($editId) : null;
+$idEdicao = (int)($_GET['edit'] ?? 0);
+$categoriaEdicao = $idEdicao > 0 ? $modeloCategoria->get($idEdicao) : null;
 
-$categorias = $categoriaModel->get();
+$categorias = $modeloCategoria->get();
 
 ?>
 
@@ -15,22 +15,22 @@ $categorias = $categoriaModel->get();
     <div class="col-lg-5">
         <div class="card">
             <div class="card-body">
-                <h2 class="h5 mb-3"><?php echo $editCategoria ? 'Editar Categoria' : 'Nova Categoria'; ?></h2>
+                <h2 class="h5 mb-3"><?php echo $categoriaEdicao ? 'Editar Categoria' : 'Nova Categoria'; ?></h2>
 
                 <form method="post" action="<?php echo e(baseUrl('/categorias')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $editCategoria ? 'update' : 'create'; ?>">
-                    <?php if ($editCategoria) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($editCategoria['id']); ?>">
+                    <input type="hidden" name="action" value="<?php echo $categoriaEdicao ? 'update' : 'create'; ?>">
+                    <?php if ($categoriaEdicao) { ?>
+                        <input type="hidden" name="id" value="<?php echo e($categoriaEdicao['id']); ?>">
                     <?php } ?>
 
                     <div class="mb-3">
                         <label class="form-label" for="nome">Nome</label>
-                        <input class="form-control" id="nome" name="nome" required value="<?php echo e($editCategoria['nome'] ?? ''); ?>">
+                        <input class="form-control" id="nome" name="nome" required value="<?php echo e($categoriaEdicao['nome'] ?? ''); ?>">
                     </div>
 
                     <div class="d-flex gap-2">
                         <button class="btn btn-primary" type="submit">Salvar</button>
-                        <?php if ($editCategoria) { ?>
+                        <?php if ($categoriaEdicao) { ?>
                             <a class="btn btn-outline-secondary" href="<?php echo e(baseUrl('/categorias')); ?>">Cancelar</a>
                         <?php } ?>
                     </div>
@@ -60,16 +60,16 @@ $categorias = $categoriaModel->get();
                                 </tr>
                             <?php } ?>
 
-                            <?php foreach ($categorias as $c) { ?>
+                            <?php foreach ($categorias as $categoria) { ?>
                                 <tr>
-                                    <td><?php echo e($c['id']); ?></td>
-                                    <td><?php echo e($c['nome']); ?></td>
+                                    <td><?php echo e($categoria['id']); ?></td>
+                                    <td><?php echo e($categoria['nome']); ?></td>
                                     <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/categorias') . '?edit=' . (int)$c['id']); ?>">Editar</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/categorias') . '?edit=' . (int)$categoria['id']); ?>">Editar</a>
 
                                         <form method="post" action="<?php echo e(baseUrl('/categorias')); ?>" class="d-inline" onsubmit="return confirm('Remover esta categoria?');">
                                             <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?php echo e($c['id']); ?>">
+                                            <input type="hidden" name="id" value="<?php echo e($categoria['id']); ?>">
                                             <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                         </form>
                                     </td>

@@ -2,10 +2,10 @@
 
 defined('ACCESS') or die('Acesso negado');
 
-$editId = (int)($_GET['edit'] ?? 0);
-$editUsuario = $editId > 0 ? $usuarioModel->get($editId) : null;
+$idEdicao = (int)($_GET['edit'] ?? 0);
+$usuarioEdicao = $idEdicao > 0 ? $modeloUsuario->get($idEdicao) : null;
 
-$usuarios = $usuarioModel->get();
+$usuarios = $modeloUsuario->get();
 
 ?>
 
@@ -15,36 +15,36 @@ $usuarios = $usuarioModel->get();
     <div class="col-lg-5">
         <div class="card">
             <div class="card-body">
-                <h2 class="h5 mb-3"><?php echo $editUsuario ? 'Editar Usuário' : 'Novo Usuário'; ?></h2>
+                <h2 class="h5 mb-3"><?php echo $usuarioEdicao ? 'Editar Usuário' : 'Novo Usuário'; ?></h2>
 
                 <form method="post" action="<?php echo e(baseUrl('/usuarios')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $editUsuario ? 'update' : 'create'; ?>">
-                    <?php if ($editUsuario) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($editUsuario['id']); ?>">
+                    <input type="hidden" name="action" value="<?php echo $usuarioEdicao ? 'update' : 'create'; ?>">
+                    <?php if ($usuarioEdicao) { ?>
+                        <input type="hidden" name="id" value="<?php echo e($usuarioEdicao['id']); ?>">
                     <?php } ?>
 
                     <div class="mb-3">
                         <label class="form-label" for="username">Username</label>
-                        <input class="form-control" id="username" name="username" required value="<?php echo e($editUsuario['username'] ?? ''); ?>">
+                        <input class="form-control" id="username" name="username" required value="<?php echo e($usuarioEdicao['username'] ?? ''); ?>">
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="first_name">Nome</label>
-                            <input class="form-control" id="first_name" name="first_name" value="<?php echo e($editUsuario['first_name'] ?? ''); ?>">
+                            <input class="form-control" id="first_name" name="first_name" value="<?php echo e($usuarioEdicao['first_name'] ?? ''); ?>">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="last_name">Sobrenome</label>
-                            <input class="form-control" id="last_name" name="last_name" value="<?php echo e($editUsuario['last_name'] ?? ''); ?>">
+                            <input class="form-control" id="last_name" name="last_name" value="<?php echo e($usuarioEdicao['last_name'] ?? ''); ?>">
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label" for="email">Email</label>
-                        <input class="form-control" id="email" name="email" type="email" value="<?php echo e($editUsuario['email'] ?? ''); ?>">
+                        <input class="form-control" id="email" name="email" type="email" value="<?php echo e($usuarioEdicao['email'] ?? ''); ?>">
                     </div>
 
-                    <?php if (!$editUsuario) { ?>
+                    <?php if (!$usuarioEdicao) { ?>
                         <div class="mb-3">
                             <label class="form-label" for="senha">Senha</label>
                             <input class="form-control" id="senha" name="senha" type="password" minlength="6" required>
@@ -58,7 +58,7 @@ $usuarios = $usuarioModel->get();
 
                     <div class="d-flex gap-2">
                         <button class="btn btn-primary" type="submit">Salvar</button>
-                        <?php if ($editUsuario) { ?>
+                        <?php if ($usuarioEdicao) { ?>
                             <a class="btn btn-outline-secondary" href="<?php echo e(baseUrl('/usuarios')); ?>">Cancelar</a>
                         <?php } ?>
                     </div>
@@ -91,23 +91,23 @@ $usuarios = $usuarioModel->get();
                                 </tr>
                             <?php } ?>
 
-                            <?php foreach ($usuarios as $u) {
-                                $nome = trim((string)($u['first_name'] ?? '') . ' ' . (string)($u['last_name'] ?? ''));
-                                $criadoEm = (string)($u['criado_em'] ?? '');
+                            <?php foreach ($usuarios as $usuario) {
+                                $nome = trim((string)($usuario['first_name'] ?? '') . ' ' . (string)($usuario['last_name'] ?? ''));
+                                $criadoEm = (string)($usuario['criado_em'] ?? '');
                                 $data = $criadoEm !== '' ? date('d/m/Y', strtotime($criadoEm)) : '—';
                             ?>
                                 <tr>
-                                    <td><?php echo e($u['id']); ?></td>
-                                    <td><?php echo e($u['username'] ?? ''); ?></td>
+                                    <td><?php echo e($usuario['id']); ?></td>
+                                    <td><?php echo e($usuario['username'] ?? ''); ?></td>
                                     <td><?php echo e($nome); ?></td>
-                                    <td><?php echo e($u['email'] ?? ''); ?></td>
+                                    <td><?php echo e($usuario['email'] ?? ''); ?></td>
                                     <td><?php echo e($data); ?></td>
                                     <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/usuarios') . '?edit=' . (int)$u['id']); ?>">Editar</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/usuarios') . '?edit=' . (int)$usuario['id']); ?>">Editar</a>
 
                                         <form method="post" action="<?php echo e(baseUrl('/usuarios')); ?>" class="d-inline" onsubmit="return confirm('Remover este usuário?');">
                                             <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?php echo e($u['id']); ?>">
+                                            <input type="hidden" name="id" value="<?php echo e($usuario['id']); ?>">
                                             <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                         </form>
                                     </td>

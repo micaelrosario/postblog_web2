@@ -6,24 +6,24 @@ defined('ACCESS') or die('Acesso negado');
 
 class Database
 {
-    private string $host = 'localhost';
-    private string $dbname = 'blogpost';
-    private string $username = 'root';
-    private string $password = '';
+    private string $servidor = 'localhost';
+    private string $banco = 'blogpost';
+    private string $usuario = 'root';
+    private string $senha = '';
 
-    private ?PDO $conn = null;
+    private ?PDO $conexao = null;
 
     public function conectar(): PDO
     {
-        if ($this->conn instanceof PDO) {
-            return $this->conn;
+        if ($this->conexao instanceof PDO) {
+            return $this->conexao;
         }
 
         try {
-            $this->conn = new PDO(
-                "mysql:host={$this->host};dbname={$this->dbname};charset=utf8mb4",
-                $this->username,
-                $this->password,
+            $this->conexao = new PDO(
+                "mysql:host={$this->servidor};dbname={$this->banco};charset=utf8mb4",
+                $this->usuario,
+                $this->senha,
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -31,7 +31,7 @@ class Database
                 ]
             );
 
-            return $this->conn;
+            return $this->conexao;
         } catch (PDOException $e) {
             throw new RuntimeException('Erro ao conectar no banco: ' . $e->getMessage(), 0, $e);
         }

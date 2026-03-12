@@ -15,45 +15,45 @@ class Api
         header('Access-Control-Allow-Headers: Content-Type');
     }
 
-    public function options(array $dados): void
+    public function options(array $segmentosUrl): void
     {
         $this->cors();
         http_response_code(204);
     }
 
-    public function get(array $dados): void
+    public function get(array $segmentosUrl): void
     {
-        $this->handle($dados);
+        $this->handle($segmentosUrl);
     }
 
-    public function post(array $dados): void
+    public function post(array $segmentosUrl): void
     {
-        $this->handle($dados);
+        $this->handle($segmentosUrl);
     }
 
-    public function put(array $dados): void
+    public function put(array $segmentosUrl): void
     {
-        $this->handle($dados);
+        $this->handle($segmentosUrl);
     }
 
-    public function delete(array $dados): void
+    public function delete(array $segmentosUrl): void
     {
-        $this->handle($dados);
+        $this->handle($segmentosUrl);
     }
 
-    private function handle(array $dados): void
+    private function handle(array $segmentosUrl): void
     {
         $this->cors();
 
-        $resource = '';
-        if (isset($dados[1]) && $dados[1] !== '') {
-            $resource = strtolower(trim((string)$dados[1]));
+        $recurso = '';
+        if (isset($segmentosUrl[1]) && $segmentosUrl[1] !== '') {
+            $recurso = strtolower(trim((string)$segmentosUrl[1]));
         }
-        if ($resource === '') {
-            $resource = strtolower(trim((string)($_GET['resource'] ?? '')));
+        if ($recurso === '') {
+            $recurso = strtolower(trim((string)($_GET['resource'] ?? '')));
         }
 
-        $resourceMap = [
+        $mapaRecursos = [
             'posts' => [
                 'class' => 'Post',
                 'notFound' => 'Post não encontrado',
@@ -116,7 +116,7 @@ class Api
             ],
         ];
 
-        if ($resource === '' || !isset($resourceMap[$resource])) {
+        if ($recurso === '' || !isset($mapaRecursos[$recurso])) {
             $this->json([
                 'sucesso' => false,
                 'mensagem' => 'Recurso inválido. Use /api/posts|categorias|usuarios|comentarios|perfil_autor ou ?resource=...',
@@ -124,90 +124,90 @@ class Api
             return;
         }
 
-        $cfg = $resourceMap[$resource];
+        $config = $mapaRecursos[$recurso];
 
         try {
-            $con = (new Database())->conectar();
+            $conexao = (new Database())->conectar();
 
-            $className = (string)$cfg['class'];
-            $model = new $className($con);
+            $nomeClasse = (string)$config['class'];
+            $modelo = new $nomeClasse($conexao);
 
-            $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+            $metodo = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 
             $id = null;
-            if (isset($dados[2]) && $dados[2] !== '' && ctype_digit((string)$dados[2])) {
-                $id = (int)$dados[2];
+            if (isset($segmentosUrl[2]) && $segmentosUrl[2] !== '' && ctype_digit((string)$segmentosUrl[2])) {
+                $id = (int)$segmentosUrl[2];
             }
             if ($id === null && isset($_GET['id'])) {
                 $id = (int)$_GET['id'];
             }
 
-            if ($method === 'GET') {
-                $result = $model->get($id);
+            if ($metodo === 'GET') {
+                $resultado = $modelo->get($id);
 
                 if ($id !== null) {
-                    if ($result === null) {
-                        $this->json(['erro' => $cfg['notFound']], 200);
+                    if ($resultado === null) {
+                        $this->json(['erro' => $config['notFound']], 200);
                         return;
                     }
-                    $this->json($result, 200);
+                    $this->json($resultado, 200);
                     return;
                 }
 
-                $this->json($result, 200);
+                $this->json($resultado, 200);
                 return;
             }
 
-            if ($method === 'POST') {
-                $ok = (bool)$model->post($_POST);
+            if ($metodo === 'POST') {
+                $sucesso = (bool)$modelo->post($_POST);
                 $this->json([
-                    'sucesso' => $ok,
-                    'mensagem' => $ok ? $cfg['messages']['post_ok'] : $cfg['messages']['post_fail'],
+                    'sucesso' => $sucesso,
+                    'mensagem' => $sucesso ? $config['messages']['post_ok'] : $config['messages']['post_fail'],
                 ], 200);
                 return;
             }
 
-            if ($method === 'PUT') {
+            if ($metodo === 'PUT') {
                 if ($id === null) {
                     $this->json(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
                     return;
                 }
 
-                $raw = (string)file_get_contents('php://input');
-                $put = [];
+                $corpoBruto = (string)file_get_contents('php://input');
+                $dadosPut = [];
 
-                $contentType = strtolower((string)($_SERVER['CONTENT_TYPE'] ?? ''));
-                if ($raw !== '' && str_contains($contentType, 'application/json')) {
-                    $decoded = json_decode($raw, true);
-                    if (is_array($decoded)) {
-                        $put = $decoded;
+                $tipoConteudo = strtolower((string)($_SERVER['CONTENT_TYPE'] ?? ''));
+                if ($corpoBruto !== '' && str_contains($tipoConteudo, 'application/json')) {
+                    $decodificado = json_decode($corpoBruto, true);
+                    if (is_array($decodificado)) {
+                        $dadosPut = $decodificado;
                     }
                 }
 
-                if ($put === []) {
-                    parse_str($raw, $put);
+                if ($dadosPut === []) {
+                    parse_str($corpoBruto, $dadosPut);
                 }
 
-                $ok = (bool)$model->put($id, (array)$put);
+                $sucesso = (bool)$modelo->put($id, (array)$dadosPut);
 
                 $this->json([
-                    'sucesso' => $ok,
-                    'mensagem' => $ok ? $cfg['messages']['put_ok'] : $cfg['messages']['put_fail'],
+                    'sucesso' => $sucesso,
+                    'mensagem' => $sucesso ? $config['messages']['put_ok'] : $config['messages']['put_fail'],
                 ], 200);
                 return;
             }
 
-            if ($method === 'DELETE') {
+            if ($metodo === 'DELETE') {
                 if ($id === null) {
                     $this->json(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
                     return;
                 }
 
-                $ok = (bool)$model->delete($id);
+                $sucesso = (bool)$modelo->delete($id);
 
                 $this->json([
-                    'sucesso' => $ok,
-                    'mensagem' => $ok ? $cfg['messages']['delete_ok'] : $cfg['messages']['delete_fail'],
+                    'sucesso' => $sucesso,
+                    'mensagem' => $sucesso ? $config['messages']['delete_ok'] : $config['messages']['delete_fail'],
                 ], 200);
                 return;
             }

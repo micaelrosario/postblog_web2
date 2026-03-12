@@ -13,10 +13,10 @@ class Perfis
         return (new Database())->conectar();
     }
 
-    public function get(array $dados): void
+    public function get(array $segmentosUrl): void
     {
         try {
-            $con = $this->conectar();
+            $conexao = $this->conectar();
         } catch (Throwable $e) {
             http_response_code(500);
             $this->topo('Erro');
@@ -26,16 +26,16 @@ class Perfis
             return;
         }
 
-        $perfilModel = new PerfilAutor($con);
-        $usuarioModel = new Usuario($con);
+        $modeloPerfil = new PerfilAutor($conexao);
+        $modeloUsuario = new Usuario($conexao);
 
         $this->topo('Perfis');
 
-        $msg = (string)($_GET['msg'] ?? '');
-        if ($msg !== '') {
-            $ok = (string)($_GET['ok'] ?? '0');
-            $type = $ok === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . e($type) . '">' . e($msg) . '</div>';
+        $mensagem = (string)($_GET['msg'] ?? '');
+        if ($mensagem !== '') {
+            $okUrl = (string)($_GET['ok'] ?? '0');
+            $tipo = $okUrl === '1' ? 'success' : 'danger';
+            echo '<div class="alert alert-' . e($tipo) . '">' . e($mensagem) . '</div>';
         }
 
         require __DIR__ . '/../views/perfis.php';
@@ -43,10 +43,10 @@ class Perfis
         $this->rodape();
     }
 
-    public function post(array $dados): void
+    public function post(array $segmentosUrl): void
     {
         try {
-            $con = $this->conectar();
+            $conexao = $this->conectar();
         } catch (Throwable $e) {
             http_response_code(500);
             $this->topo('Erro');
@@ -56,36 +56,36 @@ class Perfis
             return;
         }
 
-        $perfilModel = new PerfilAutor($con);
+        $modeloPerfil = new PerfilAutor($conexao);
 
-        $action = (string)($_POST['action'] ?? '');
-        $ok = false;
-        $msg = 'Ação inválida.';
+        $acao = (string)($_POST['action'] ?? '');
+        $sucesso = false;
+        $mensagem = 'Ação inválida.';
 
-        if ($action === 'create') {
-            $ok = (bool)$perfilModel->post($_POST);
-            $msg = $ok ? 'Perfil criado com sucesso.' : 'Erro ao criar perfil.';
-        } elseif ($action === 'update') {
+        if ($acao === 'create') {
+            $sucesso = (bool)$modeloPerfil->post($_POST);
+            $mensagem = $sucesso ? 'Perfil criado com sucesso.' : 'Erro ao criar perfil.';
+        } elseif ($acao === 'update') {
             $id = (int)($_POST['id'] ?? 0);
-            $ok = $id > 0 ? (bool)$perfilModel->put($id, $_POST) : false;
-            $msg = $ok ? 'Perfil atualizado com sucesso.' : 'Erro ao atualizar perfil.';
-        } elseif ($action === 'delete') {
+            $sucesso = $id > 0 ? (bool)$modeloPerfil->put($id, $_POST) : false;
+            $mensagem = $sucesso ? 'Perfil atualizado com sucesso.' : 'Erro ao atualizar perfil.';
+        } elseif ($acao === 'delete') {
             $id = (int)($_POST['id'] ?? 0);
-            $ok = $id > 0 ? (bool)$perfilModel->delete($id) : false;
-            $msg = $ok ? 'Perfil removido com sucesso.' : 'Erro ao remover perfil.';
+            $sucesso = $id > 0 ? (bool)$modeloPerfil->delete($id) : false;
+            $mensagem = $sucesso ? 'Perfil removido com sucesso.' : 'Erro ao remover perfil.';
         }
 
-        header('Location: ' . baseUrl('/perfis') . '?ok=' . ($ok ? '1' : '0') . '&msg=' . rawurlencode($msg), true, 303);
+        header('Location: ' . baseUrl('/perfis') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
         exit;
     }
 
-    public function put(array $dados): void
+    public function put(array $segmentosUrl): void
     {
         http_response_code(405);
         echo 'Método HTTP não suportado.';
     }
 
-    public function delete(array $dados): void
+    public function delete(array $segmentosUrl): void
     {
         http_response_code(405);
         echo 'Método HTTP não suportado.';

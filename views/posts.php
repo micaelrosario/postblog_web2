@@ -2,12 +2,38 @@
 
 defined('ACCESS') or die('Acesso negado');
 
-$editId = (int)($_GET['edit'] ?? 0);
-$editPost = $editId > 0 ? $postModel->get($editId) : null;
+$idEdicao = (int)($_GET['edit'] ?? 0);
+$postEdicao = $idEdicao > 0 ? $modeloPost->get($idEdicao) : null;
 
-$usuarios = $usuarioModel->get();
-$categorias = $categoriaModel->get();
-$posts = $postModel->get();
+$usuarios = $modeloUsuario->get();
+$categorias = $modeloCategoria->get();
+$posts = $modeloPost->get();
+
+$usuarioPorId = [];
+foreach ($usuarios as $usuario) {
+    $id = (int)($usuario['id'] ?? 0);
+    if ($id <= 0) {
+        continue;
+    }
+
+    $nomeExibicao = (string)($usuario['username'] ?? '');
+    if ($nomeExibicao === '') {
+        $nome = trim((string)($usuario['first_name'] ?? '') . ' ' . (string)($usuario['last_name'] ?? ''));
+        $nomeExibicao = $nome !== '' ? $nome : ('Usuário #' . $id);
+    }
+
+    $usuarioPorId[$id] = $nomeExibicao;
+}
+
+$categoriaPorId = [];
+foreach ($categorias as $categoria) {
+    $id = (int)($categoria['id'] ?? 0);
+    if ($id <= 0) {
+        continue;
+    }
+
+    $categoriaPorId[$id] = (string)($categoria['nome'] ?? '');
+}
 
 ?>
 
@@ -17,27 +43,27 @@ $posts = $postModel->get();
     <div class="col-lg-5">
         <div class="card">
             <div class="card-body">
-                <h2 class="h5 mb-3"><?php echo $editPost ? 'Editar Post' : 'Novo Post'; ?></h2>
+                <h2 class="h5 mb-3"><?php echo $postEdicao ? 'Editar Post' : 'Novo Post'; ?></h2>
 
                 <form method="post" action="<?php echo e(baseUrl('/posts')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $editPost ? 'update' : 'create'; ?>">
-                    <?php if ($editPost) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($editPost['id']); ?>">
+                    <input type="hidden" name="action" value="<?php echo $postEdicao ? 'update' : 'create'; ?>">
+                    <?php if ($postEdicao) { ?>
+                        <input type="hidden" name="id" value="<?php echo e($postEdicao['id']); ?>">
                     <?php } ?>
 
                     <div class="mb-3">
                         <label class="form-label" for="titulo">Título</label>
-                        <input class="form-control" id="titulo" name="titulo" required value="<?php echo e($editPost['titulo'] ?? ''); ?>">
+                        <input class="form-control" id="titulo" name="titulo" required value="<?php echo e($postEdicao['titulo'] ?? ''); ?>">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label" for="autor_id">Autor</label>
                         <select class="form-select" id="autor_id" name="autor_id" required>
-                            <?php foreach ($usuarios as $u) {
-                                $selected = ($editPost && (int)($editPost['autor_id'] ?? 0) === (int)$u['id']) ? 'selected' : '';
-                                $label = $u['username'] ?? ($u['first_name'] ?? ('Usuário #' . $u['id']));
+                            <?php foreach ($usuarios as $usuario) {
+                                $selecionado = ($postEdicao && (int)($postEdicao['autor_id'] ?? 0) === (int)$usuario['id']) ? 'selected' : '';
+                                $nomeExibicao = $usuario['username'] ?? ($usuario['first_name'] ?? ('Usuário #' . $usuario['id']));
                             ?>
-                                <option value="<?php echo e($u['id']); ?>" <?php echo $selected; ?>><?php echo e($label); ?></option>
+                                <option value="<?php echo e($usuario['id']); ?>" <?php echo $selecionado; ?>><?php echo e($nomeExibicao); ?></option>
                             <?php } ?>
                         </select>
                     </div>
@@ -45,27 +71,27 @@ $posts = $postModel->get();
                     <div class="mb-3">
                         <label class="form-label" for="categoria_id">Categoria</label>
                         <select class="form-select" id="categoria_id" name="categoria_id" required>
-                            <?php foreach ($categorias as $c) {
-                                $selected = ($editPost && (int)($editPost['categoria_id'] ?? 0) === (int)$c['id']) ? 'selected' : '';
+                            <?php foreach ($categorias as $categoria) {
+                                $selecionado = ($postEdicao && (int)($postEdicao['categoria_id'] ?? 0) === (int)$categoria['id']) ? 'selected' : '';
                             ?>
-                                <option value="<?php echo e($c['id']); ?>" <?php echo $selected; ?>><?php echo e($c['nome']); ?></option>
+                                <option value="<?php echo e($categoria['id']); ?>" <?php echo $selecionado; ?>><?php echo e($categoria['nome']); ?></option>
                             <?php } ?>
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label" for="conteudo">Conteúdo</label>
-                        <textarea class="form-control" id="conteudo" name="conteudo" rows="5" required><?php echo e($editPost['conteudo'] ?? ''); ?></textarea>
+                        <textarea class="form-control" id="conteudo" name="conteudo" rows="5" required><?php echo e($postEdicao['conteudo'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label" for="imagem">Imagem (URL)</label>
-                        <input class="form-control" id="imagem" name="imagem" value="<?php echo e($editPost['imagem'] ?? ''); ?>">
+                        <input class="form-control" id="imagem" name="imagem" value="<?php echo e($postEdicao['imagem'] ?? ''); ?>">
                     </div>
 
                     <div class="d-flex gap-2">
                         <button class="btn btn-primary" type="submit">Salvar</button>
-                        <?php if ($editPost) { ?>
+                        <?php if ($postEdicao) { ?>
                             <a class="btn btn-outline-secondary" href="<?php echo e(baseUrl('/posts')); ?>">Cancelar</a>
                         <?php } ?>
                     </div>
@@ -98,24 +124,36 @@ $posts = $postModel->get();
                                 </tr>
                             <?php } ?>
 
-                            <?php foreach ($posts as $p) {
-                                $criadoEm = (string)($p['criado_em'] ?? '');
+                            <?php foreach ($posts as $post) {
+                                $criadoEm = (string)($post['criado_em'] ?? '');
                                 $data = $criadoEm !== '' ? date('d/m/Y', strtotime($criadoEm)) : '—';
+
+                                $autorId = (int)($post['autor_id'] ?? 0);
+                                $autorNome = $autorId > 0
+                                    ? ($usuarioPorId[$autorId] ?? ('Usuário #' . $autorId))
+                                    : '—';
+
+                                $categoriaId = (int)($post['categoria_id'] ?? 0);
+                                $categoriaNome = $categoriaId > 0
+                                    ? (($categoriaPorId[$categoriaId] ?? '') !== '' ? $categoriaPorId[$categoriaId] : ('Categoria #' . $categoriaId))
+                                    : '—';
                             ?>
                                 <tr>
-                                    <td><?php echo e($p['id']); ?></td>
-                                    <td><?php echo e($p['titulo']); ?></td>
-                                    <td><?php echo e($p['autor_id'] ?? ''); ?></td>
-                                    <td><?php echo e($p['categoria_id'] ?? ''); ?></td>
+                                    <td><?php echo e($post['id']); ?></td>
+                                    <td><?php echo e($post['titulo']); ?></td>
+                                    <td><?php echo e($autorNome); ?></td>
+                                    <td><?php echo e($categoriaNome); ?></td>
                                     <td><?php echo e($data); ?></td>
                                     <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/posts') . '?edit=' . (int)$p['id']); ?>">Editar</a>
+                                        <div class="d-flex flex-column align-items-end gap-2">
+                                            <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/posts') . '?edit=' . (int)$post['id']); ?>">Editar</a>
 
-                                        <form method="post" action="<?php echo e(baseUrl('/posts')); ?>" class="d-inline" onsubmit="return confirm('Remover este post?');">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?php echo e($p['id']); ?>">
-                                            <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
-                                        </form>
+                                            <form method="post" action="<?php echo e(baseUrl('/posts')); ?>" class="m-0" onsubmit="return confirm('Remover este post?');">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="id" value="<?php echo e($post['id']); ?>">
+                                                <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php } ?>

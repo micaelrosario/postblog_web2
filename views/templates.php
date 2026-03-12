@@ -4,24 +4,24 @@ declare(strict_types=1);
 
 defined('ACCESS') or die('Acesso negado');
 
-function baseUrl(string $path = ''): string
+function baseUrl(string $caminho = ''): string
 {
-    $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '');
-    $base = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+    $nomeScript = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+    $base = rtrim(str_replace('\\', '/', dirname($nomeScript)), '/');
 
     if ($base === '/' || $base === '.') {
         $base = '';
     }
 
-    if ($path === '' || $path === '/') {
+    if ($caminho === '' || $caminho === '/') {
         return $base . '/';
     }
 
-    if ($path[0] !== '/') {
-        $path = '/' . $path;
+    if ($caminho[0] !== '/') {
+        $caminho = '/' . $caminho;
     }
 
-    return $base . $path;
+    return $base . $caminho;
 }
 
 function e(mixed $value): string

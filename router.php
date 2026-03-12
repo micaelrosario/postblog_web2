@@ -3,20 +3,22 @@
 // Router para o servidor embutido do PHP (php -S).
 // Permite rotas amigáveis (/posts, /categorias, etc.) apontando para index.php.
 
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+$caminho = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 
-$fullPath = __DIR__ . $path;
-if ($path !== '/' && is_file($fullPath)) {
+$caminhoCompleto = __DIR__ . $caminho;
+if ($caminho !== '/' && is_file($caminhoCompleto)) {
     return false;
 }
 
 // Simula o rewrite do .htaccess: /posts -> index.php?url=posts
 if (!isset($_GET['url'])) {
-    $clean = trim((string)$path, '/');
-    if ($clean === 'index.php') {
-        $clean = '';
+    $limpo = trim((string)$caminho, '/');
+    if ($limpo === 'index.php') {
+        $limpo = '';
+    } elseif (str_starts_with($limpo, 'index.php/')) {
+        $limpo = substr($limpo, strlen('index.php/'));
     }
-    $_GET['url'] = $clean;
+    $_GET['url'] = $limpo;
 }
 
 require __DIR__ . '/index.php';
