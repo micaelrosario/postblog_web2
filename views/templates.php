@@ -1,10 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
-defined('ACCESS') or die('Acesso negado');
-
-function baseUrl(string $caminho = ''): string
+function baseUrl($caminho = '')
 {
     $nomeScript = (string)($_SERVER['SCRIPT_NAME'] ?? '');
     $base = rtrim(str_replace('\\', '/', dirname($nomeScript)), '/');
@@ -24,12 +20,40 @@ function baseUrl(string $caminho = ''): string
     return $base . $caminho;
 }
 
-function e(mixed $value): string
+function e($value)
 {
     return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function topo(string $titulo): void
+function jsonResponse($dados, $codigoStatus = 200)
+{
+    http_response_code((int)$codigoStatus);
+    header('Content-Type: application/json; charset=UTF-8');
+
+    echo json_encode($dados, JSON_UNESCAPED_UNICODE);
+}
+
+function lerDadosCorpo(): array
+{
+    $corpoBruto = file_get_contents('php://input');
+    if ($corpoBruto === false || $corpoBruto === '') {
+        return [];
+    }
+
+    $tipoConteudo = strtolower((string)($_SERVER['CONTENT_TYPE'] ?? ''));
+
+    if (str_contains($tipoConteudo, 'application/json')) {
+        $decodificado = json_decode($corpoBruto, true);
+        return is_array($decodificado) ? $decodificado : [];
+    }
+
+    $dados = [];
+    parse_str($corpoBruto, $dados);
+
+    return is_array($dados) ? $dados : [];
+}
+
+function topo($titulo)
 {
     ?>
     <!doctype html>
@@ -63,12 +87,77 @@ function topo(string $titulo): void
     <?php
 }
 
-function rodape(): void
+function rodape()
 {
     ?>
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+        <script>
+            (function () {
+                document.addEventListener('submit', async function (evento) {
+                    const formulario = evento.target;
+                    if (!(formulario instanceof HTMLFormElement)) {
+                        return;
+                    }
+
+                    if (evento.defaultPrevented) {
+                        return;
+                    }
+
+                    const metodoRest = String(formulario.dataset.metodoRest || '').trim().toUpperCase();
+                    if (!metodoRest) {
+                        return;
+                    }
+
+                    evento.preventDefault();
+
+                    const redirecionar = String(formulario.dataset.redirecionar || '').trim();
+
+                    let corpo = undefined;
+                    let headers = undefined;
+
+                    if (metodoRest !== 'DELETE') {
+                        const formData = new FormData(formulario);
+                        corpo = new URLSearchParams(formData).toString();
+                        headers = {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        };
+                    }
+
+                    try {
+                        const resposta = await fetch(formulario.action, {
+                            method: metodoRest,
+                            headers,
+                            body: corpo
+                        });
+
+                        let retorno = null;
+                        try {
+                            retorno = await resposta.json();
+                        } catch (e) {
+                            retorno = null;
+                        }
+
+                        const sucesso = Boolean(retorno && typeof retorno === 'object' && retorno.sucesso);
+                        const mensagem = String(retorno && typeof retorno === 'object' && retorno.mensagem ? retorno.mensagem : (resposta.ok ? 'Operação realizada.' : 'Erro na operação.'));
+
+                        if (redirecionar) {
+                            const url = new URL(redirecionar, window.location.origin);
+                            url.searchParams.set('ok', sucesso ? '1' : '0');
+                            url.searchParams.set('msg', mensagem);
+                            window.location.href = url.toString();
+                            return;
+                        }
+
+                        window.location.reload();
+                    } catch (e) {
+                        alert('Falha ao enviar a requisição.');
+                    }
+                });
+            })();
+        </script>
     </body>
     </html>
     <?php

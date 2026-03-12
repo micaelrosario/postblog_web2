@@ -1,34 +1,32 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 class Categoria {
 
-    private $con;
+    private $conexao;
 
-    public function __construct($con) {
-        $this->con = $con;
+    public function __construct($conexao) {
+        $this->conexao = $conexao;
     }
 
     public function listar() {
-        return $this->con->query("SELECT * FROM categoria ORDER BY id ASC");
+        return $this->conexao->query("SELECT * FROM categoria ORDER BY id ASC");
     }
 
     public function criar($dados) {
-        $stmt = $this->con->prepare("INSERT INTO categoria (nome) VALUES (:nome)");
+        $stmt = $this->conexao->prepare("INSERT INTO categoria (nome) VALUES (:nome)");
         return $stmt->execute([
             'nome' => $dados['nome'] ?? '',
         ]);
     }
 
     public function buscarPorId($id) {
-        $stmt = $this->con->prepare("SELECT * FROM categoria WHERE id = :id");
+        $stmt = $this->conexao->prepare("SELECT * FROM categoria WHERE id = :id");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function atualizar($id, $dados) {
-        $stmt = $this->con->prepare("UPDATE categoria SET nome = :nome WHERE id = :id");
+        $stmt = $this->conexao->prepare("UPDATE categoria SET nome = :nome WHERE id = :id");
         return $stmt->execute([
             'id' => $id,
             'nome' => $dados['nome'] ?? '',
@@ -36,7 +34,7 @@ class Categoria {
     }
 
     public function deletar($id) {
-        $stmt = $this->con->prepare("DELETE FROM categoria WHERE id = :id");
+        $stmt = $this->conexao->prepare("DELETE FROM categoria WHERE id = :id");
         return $stmt->execute(['id' => $id]);
     }
 
@@ -46,8 +44,8 @@ class Categoria {
             return $this->listar()->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        $row = $this->buscarPorId($id);
-        return $row ?: null;
+        $registro = $this->buscarPorId($id);
+        return $registro ?: null;
     }
 
     public function post($dados) {

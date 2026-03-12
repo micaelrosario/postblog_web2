@@ -1,11 +1,13 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 $idEdicao = (int)($_GET['edit'] ?? 0);
 $categoriaEdicao = $idEdicao > 0 ? $modeloCategoria->get($idEdicao) : null;
 
 $categorias = $modeloCategoria->get();
+
+$acaoFormulario = $categoriaEdicao
+    ? baseUrl('/categorias/' . (int)($categoriaEdicao['id'] ?? 0))
+    : baseUrl('/categorias');
 
 ?>
 
@@ -17,11 +19,10 @@ $categorias = $modeloCategoria->get();
             <div class="card-body">
                 <h2 class="h5 mb-3"><?php echo $categoriaEdicao ? 'Editar Categoria' : 'Nova Categoria'; ?></h2>
 
-                <form method="post" action="<?php echo e(baseUrl('/categorias')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $categoriaEdicao ? 'update' : 'create'; ?>">
-                    <?php if ($categoriaEdicao) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($categoriaEdicao['id']); ?>">
-                    <?php } ?>
+                <form method="post"
+                    action="<?php echo e($acaoFormulario); ?>"
+                    <?php if ($categoriaEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo e(baseUrl('/categorias')); ?>"<?php } ?>
+                >
 
                     <div class="mb-3">
                         <label class="form-label" for="nome">Nome</label>
@@ -67,9 +68,7 @@ $categorias = $modeloCategoria->get();
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/categorias') . '?edit=' . (int)$categoria['id']); ?>">Editar</a>
 
-                                        <form method="post" action="<?php echo e(baseUrl('/categorias')); ?>" class="d-inline" onsubmit="return confirm('Remover esta categoria?');">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?php echo e($categoria['id']); ?>">
+                                        <form method="post" action="<?php echo e(baseUrl('/categorias/' . (int)$categoria['id'])); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo e(baseUrl('/categorias')); ?>" onsubmit="return confirm('Remover esta categoria?');">
                                             <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                         </form>
                                     </td>

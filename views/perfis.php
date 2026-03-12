@@ -1,12 +1,14 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 $idEdicao = (int)($_GET['edit'] ?? 0);
 $perfilEdicao = $idEdicao > 0 ? $modeloPerfil->get($idEdicao) : null;
 
 $perfis = $modeloPerfil->get();
 $usuarios = $modeloUsuario->get();
+
+$acaoFormulario = $perfilEdicao
+    ? baseUrl('/perfis/' . (int)($perfilEdicao['id'] ?? 0))
+    : baseUrl('/perfis');
 
 ?>
 
@@ -18,11 +20,10 @@ $usuarios = $modeloUsuario->get();
             <div class="card-body">
                 <h2 class="h5 mb-3"><?php echo $perfilEdicao ? 'Editar Perfil' : 'Novo Perfil'; ?></h2>
 
-                <form method="post" action="<?php echo e(baseUrl('/perfis')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $perfilEdicao ? 'update' : 'create'; ?>">
-                    <?php if ($perfilEdicao) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($perfilEdicao['id']); ?>">
-                    <?php } ?>
+                <form method="post"
+                    action="<?php echo e($acaoFormulario); ?>"
+                    <?php if ($perfilEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo e(baseUrl('/perfis')); ?>"<?php } ?>
+                >
 
                     <div class="mb-3">
                         <label class="form-label" for="usuario_id">Usuário</label>
@@ -99,9 +100,7 @@ $usuarios = $modeloUsuario->get();
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/perfis') . '?edit=' . (int)$perfil['id']); ?>">Editar</a>
 
-                                        <form method="post" action="<?php echo e(baseUrl('/perfis')); ?>" class="d-inline" onsubmit="return confirm('Remover este perfil?');">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?php echo e($perfil['id']); ?>">
+                                        <form method="post" action="<?php echo e(baseUrl('/perfis/' . (int)$perfil['id'])); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo e(baseUrl('/perfis')); ?>" onsubmit="return confirm('Remover este perfil?');">
                                             <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                         </form>
                                     </td>

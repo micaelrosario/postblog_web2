@@ -1,13 +1,15 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 $idEdicao = (int)($_GET['edit'] ?? 0);
 $comentarioEdicao = $idEdicao > 0 ? $modeloComentario->get($idEdicao) : null;
 
 $comentarios = $modeloComentario->get();
 $posts = $modeloPost->get();
 $usuarios = $modeloUsuario->get();
+
+$acaoFormulario = $comentarioEdicao
+    ? baseUrl('/comentarios/' . (int)($comentarioEdicao['id'] ?? 0))
+    : baseUrl('/comentarios');
 
 ?>
 
@@ -19,11 +21,10 @@ $usuarios = $modeloUsuario->get();
             <div class="card-body">
                 <h2 class="h5 mb-3"><?php echo $comentarioEdicao ? 'Editar Comentário' : 'Novo Comentário'; ?></h2>
 
-                <form method="post" action="<?php echo e(baseUrl('/comentarios')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $comentarioEdicao ? 'update' : 'create'; ?>">
-                    <?php if ($comentarioEdicao) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($comentarioEdicao['id']); ?>">
-                    <?php } ?>
+                <form method="post"
+                    action="<?php echo e($acaoFormulario); ?>"
+                    <?php if ($comentarioEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo e(baseUrl('/comentarios')); ?>"<?php } ?>
+                >
 
                     <div class="mb-3">
                         <label class="form-label" for="post_id">Post</label>
@@ -109,9 +110,7 @@ $usuarios = $modeloUsuario->get();
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/comentarios') . '?edit=' . (int)$comentario['id']); ?>">Editar</a>
 
-                                        <form method="post" action="<?php echo e(baseUrl('/comentarios')); ?>" class="d-inline" onsubmit="return confirm('Remover este comentário?');">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?php echo e($comentario['id']); ?>">
+                                        <form method="post" action="<?php echo e(baseUrl('/comentarios/' . (int)$comentario['id'])); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo e(baseUrl('/comentarios')); ?>" onsubmit="return confirm('Remover este comentário?');">
                                             <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                         </form>
                                     </td>

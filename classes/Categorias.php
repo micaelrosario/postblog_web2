@@ -1,34 +1,37 @@
 <?php
 
-declare(strict_types=1);
-
-defined('ACCESS') or die('Acesso negado');
-
 class Categorias
 {
-    use Template;
+    private function obterId($segmentosUrl)
+    {
+        if (isset($segmentosUrl[1]) && ctype_digit((string)$segmentosUrl[1])) {
+            return (int)$segmentosUrl[1];
+        }
 
-    private function conectar(): PDO
+        return 0;
+    }
+
+    private function conectar()
     {
         return (new Database())->conectar();
     }
 
-    public function get(array $segmentosUrl): void
+    public function get($segmentosUrl)
     {
         try {
             $conexao = $this->conectar();
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             http_response_code(500);
-            $this->topo('Erro');
+            topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
             echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            $this->rodape();
+            rodape();
             return;
         }
 
         $modeloCategoria = new Categoria($conexao);
 
-        $this->topo('Categorias');
+        topo('Categorias');
 
         $mensagem = (string)($_GET['msg'] ?? '');
         if ($mensagem !== '') {
@@ -39,54 +42,79 @@ class Categorias
 
         require __DIR__ . '/../views/categorias.php';
 
-        $this->rodape();
+        rodape();
     }
 
-    public function post(array $segmentosUrl): void
+    public function post($segmentosUrl)
     {
+        $id = $this->obterId($segmentosUrl);
+        if ($id > 0) {
+            http_response_code(405);
+            echo 'Método HTTP não suportado.';
+            return;
+        }
+
         try {
             $conexao = $this->conectar();
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             http_response_code(500);
-            $this->topo('Erro');
+            topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
             echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            $this->rodape();
+            rodape();
             return;
         }
 
         $modeloCategoria = new Categoria($conexao);
 
-        $acao = (string)($_POST['action'] ?? '');
-        $sucesso = false;
-        $mensagem = 'Ação inválida.';
-
-        if ($acao === 'create') {
-            $sucesso = (bool)$modeloCategoria->post($_POST);
-            $mensagem = $sucesso ? 'Categoria criada com sucesso.' : 'Erro ao criar categoria.';
-        } elseif ($acao === 'update') {
-            $id = (int)($_POST['id'] ?? 0);
-            $sucesso = $id > 0 ? (bool)$modeloCategoria->put($id, $_POST) : false;
-            $mensagem = $sucesso ? 'Categoria atualizada com sucesso.' : 'Erro ao atualizar categoria.';
-        } elseif ($acao === 'delete') {
-            $id = (int)($_POST['id'] ?? 0);
-            $sucesso = $id > 0 ? (bool)$modeloCategoria->delete($id) : false;
-            $mensagem = $sucesso ? 'Categoria removida com sucesso.' : 'Erro ao remover categoria.';
-        }
+        $sucesso = (bool)$modeloCategoria->post($_POST);
+        $mensagem = $sucesso ? 'Categoria criada com sucesso.' : 'Erro ao criar categoria.';
 
         header('Location: ' . baseUrl('/categorias') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
         exit;
     }
 
-    public function put(array $segmentosUrl): void
+    public function put($segmentosUrl)
     {
-        http_response_code(405);
-        echo 'Método HTTP não suportado.';
+        $id = $this->obterId($segmentosUrl);
+        if ($id <= 0) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            return;
+        }
+
+        try {
+            $conexao = $this->conectar();
+            $modeloCategoria = new Categoria($conexao);
+
+            $dadosPut = lerDadosCorpo();
+
+            $sucesso = (bool)$modeloCategoria->put($id, $dadosPut);
+            $mensagem = $sucesso ? 'Categoria atualizada com sucesso.' : 'Erro ao atualizar categoria.';
+
+            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+        } catch (Exception $e) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+        }
     }
 
-    public function delete(array $segmentosUrl): void
+    public function delete($segmentosUrl)
     {
-        http_response_code(405);
-        echo 'Método HTTP não suportado.';
+        $id = $this->obterId($segmentosUrl);
+        if ($id <= 0) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            return;
+        }
+
+        try {
+            $conexao = $this->conectar();
+            $modeloCategoria = new Categoria($conexao);
+
+            $sucesso = (bool)$modeloCategoria->delete($id);
+            $mensagem = $sucesso ? 'Categoria removida com sucesso.' : 'Erro ao remover categoria.';
+
+            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+        } catch (Exception $e) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+        }
     }
 }

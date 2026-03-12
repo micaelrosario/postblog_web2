@@ -1,35 +1,38 @@
 <?php
 
-declare(strict_types=1);
-
-defined('ACCESS') or die('Acesso negado');
-
 class Perfis
 {
-    use Template;
+    private function obterId($segmentosUrl)
+    {
+        if (isset($segmentosUrl[1]) && ctype_digit((string)$segmentosUrl[1])) {
+            return (int)$segmentosUrl[1];
+        }
 
-    private function conectar(): PDO
+        return 0;
+    }
+
+    private function conectar()
     {
         return (new Database())->conectar();
     }
 
-    public function get(array $segmentosUrl): void
+    public function get($segmentosUrl)
     {
         try {
             $conexao = $this->conectar();
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             http_response_code(500);
-            $this->topo('Erro');
+            topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
             echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            $this->rodape();
+            rodape();
             return;
         }
 
         $modeloPerfil = new PerfilAutor($conexao);
         $modeloUsuario = new Usuario($conexao);
 
-        $this->topo('Perfis');
+        topo('Perfis');
 
         $mensagem = (string)($_GET['msg'] ?? '');
         if ($mensagem !== '') {
@@ -40,54 +43,79 @@ class Perfis
 
         require __DIR__ . '/../views/perfis.php';
 
-        $this->rodape();
+        rodape();
     }
 
-    public function post(array $segmentosUrl): void
+    public function post($segmentosUrl)
     {
+        $id = $this->obterId($segmentosUrl);
+        if ($id > 0) {
+            http_response_code(405);
+            echo 'Método HTTP não suportado.';
+            return;
+        }
+
         try {
             $conexao = $this->conectar();
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             http_response_code(500);
-            $this->topo('Erro');
+            topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
             echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            $this->rodape();
+            rodape();
             return;
         }
 
         $modeloPerfil = new PerfilAutor($conexao);
 
-        $acao = (string)($_POST['action'] ?? '');
-        $sucesso = false;
-        $mensagem = 'Ação inválida.';
-
-        if ($acao === 'create') {
-            $sucesso = (bool)$modeloPerfil->post($_POST);
-            $mensagem = $sucesso ? 'Perfil criado com sucesso.' : 'Erro ao criar perfil.';
-        } elseif ($acao === 'update') {
-            $id = (int)($_POST['id'] ?? 0);
-            $sucesso = $id > 0 ? (bool)$modeloPerfil->put($id, $_POST) : false;
-            $mensagem = $sucesso ? 'Perfil atualizado com sucesso.' : 'Erro ao atualizar perfil.';
-        } elseif ($acao === 'delete') {
-            $id = (int)($_POST['id'] ?? 0);
-            $sucesso = $id > 0 ? (bool)$modeloPerfil->delete($id) : false;
-            $mensagem = $sucesso ? 'Perfil removido com sucesso.' : 'Erro ao remover perfil.';
-        }
+        $sucesso = (bool)$modeloPerfil->post($_POST);
+        $mensagem = $sucesso ? 'Perfil criado com sucesso.' : 'Erro ao criar perfil.';
 
         header('Location: ' . baseUrl('/perfis') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
         exit;
     }
 
-    public function put(array $segmentosUrl): void
+    public function put($segmentosUrl)
     {
-        http_response_code(405);
-        echo 'Método HTTP não suportado.';
+        $id = $this->obterId($segmentosUrl);
+        if ($id <= 0) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            return;
+        }
+
+        try {
+            $conexao = $this->conectar();
+            $modeloPerfil = new PerfilAutor($conexao);
+
+            $dadosPut = lerDadosCorpo();
+
+            $sucesso = (bool)$modeloPerfil->put($id, $dadosPut);
+            $mensagem = $sucesso ? 'Perfil atualizado com sucesso.' : 'Erro ao atualizar perfil.';
+
+            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+        } catch (Exception $e) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+        }
     }
 
-    public function delete(array $segmentosUrl): void
+    public function delete($segmentosUrl)
     {
-        http_response_code(405);
-        echo 'Método HTTP não suportado.';
+        $id = $this->obterId($segmentosUrl);
+        if ($id <= 0) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            return;
+        }
+
+        try {
+            $conexao = $this->conectar();
+            $modeloPerfil = new PerfilAutor($conexao);
+
+            $sucesso = (bool)$modeloPerfil->delete($id);
+            $mensagem = $sucesso ? 'Perfil removido com sucesso.' : 'Erro ao remover perfil.';
+
+            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+        } catch (Exception $e) {
+            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+        }
     }
 }

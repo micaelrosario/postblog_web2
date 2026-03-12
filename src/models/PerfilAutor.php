@@ -1,23 +1,21 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 class PerfilAutor {
 
-    private $con;
+    private $conexao;
 
-    public function __construct($con) {
-        $this->con = $con;
+    public function __construct($conexao) {
+        $this->conexao = $conexao;
     }
 
     public function listar() {
-        return $this->con->query("SELECT * FROM perfil_autor");
+        return $this->conexao->query("SELECT * FROM perfil_autor");
     }
 
     public function criar($dados) {
         $sql = "INSERT INTO perfil_autor (usuario_id, bio, foto, redes_sociais)
                 VALUES (:usuario_id, :bio, :foto, :redes_sociais)";
-        $stmt = $this->con->prepare($sql);
+        $stmt = $this->conexao->prepare($sql);
         return $stmt->execute([
             'usuario_id' => $dados['usuario_id'] ?? null,
             'bio' => $dados['bio'] ?? null,
@@ -27,13 +25,13 @@ class PerfilAutor {
     }
 
     public function buscarPorId($id) {
-        $stmt = $this->con->prepare("SELECT * FROM perfil_autor WHERE id=:id");
+        $stmt = $this->conexao->prepare("SELECT * FROM perfil_autor WHERE id=:id");
         $stmt->execute(['id'=>$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function atualizar($id, $dados) {
-        $stmt = $this->con->prepare("
+        $stmt = $this->conexao->prepare("
             UPDATE perfil_autor 
             SET bio=:bio, foto=:foto, redes_sociais=:redes_sociais
             WHERE id=:id
@@ -47,7 +45,7 @@ class PerfilAutor {
     }
 
     public function deletar($id) {
-        $stmt = $this->con->prepare("DELETE FROM perfil_autor WHERE id=:id");
+        $stmt = $this->conexao->prepare("DELETE FROM perfil_autor WHERE id=:id");
         return $stmt->execute(['id'=>$id]);
     }
 
@@ -57,8 +55,8 @@ class PerfilAutor {
             return $this->listar()->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        $row = $this->buscarPorId($id);
-        return $row ?: null;
+        $registro = $this->buscarPorId($id);
+        return $registro ?: null;
     }
 
     public function post($dados) {

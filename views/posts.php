@@ -1,7 +1,5 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 $idEdicao = (int)($_GET['edit'] ?? 0);
 $postEdicao = $idEdicao > 0 ? $modeloPost->get($idEdicao) : null;
 
@@ -35,6 +33,10 @@ foreach ($categorias as $categoria) {
     $categoriaPorId[$id] = (string)($categoria['nome'] ?? '');
 }
 
+$acaoFormulario = $postEdicao
+    ? baseUrl('/posts/' . (int)($postEdicao['id'] ?? 0))
+    : baseUrl('/posts');
+
 ?>
 
 <h1 class="h3 mb-3">Posts</h1>
@@ -45,11 +47,10 @@ foreach ($categorias as $categoria) {
             <div class="card-body">
                 <h2 class="h5 mb-3"><?php echo $postEdicao ? 'Editar Post' : 'Novo Post'; ?></h2>
 
-                <form method="post" action="<?php echo e(baseUrl('/posts')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $postEdicao ? 'update' : 'create'; ?>">
-                    <?php if ($postEdicao) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($postEdicao['id']); ?>">
-                    <?php } ?>
+                <form method="post"
+                    action="<?php echo e($acaoFormulario); ?>"
+                    <?php if ($postEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo e(baseUrl('/posts')); ?>"<?php } ?>
+                >
 
                     <div class="mb-3">
                         <label class="form-label" for="titulo">Título</label>
@@ -148,9 +149,7 @@ foreach ($categorias as $categoria) {
                                         <div class="d-flex flex-column align-items-end gap-2">
                                             <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/posts') . '?edit=' . (int)$post['id']); ?>">Editar</a>
 
-                                            <form method="post" action="<?php echo e(baseUrl('/posts')); ?>" class="m-0" onsubmit="return confirm('Remover este post?');">
-                                                <input type="hidden" name="action" value="delete">
-                                                <input type="hidden" name="id" value="<?php echo e($post['id']); ?>">
+                                            <form method="post" action="<?php echo e(baseUrl('/posts/' . (int)$post['id'])); ?>" class="m-0" data-metodo-rest="DELETE" data-redirecionar="<?php echo e(baseUrl('/posts')); ?>" onsubmit="return confirm('Remover este post?');">
                                                 <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                             </form>
                                         </div>

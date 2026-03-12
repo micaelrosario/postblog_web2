@@ -1,23 +1,21 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 class Usuario {
 
-    private $con;
+    private $conexao;
 
-    public function __construct($con) {
-        $this->con = $con;
+    public function __construct($conexao) {
+        $this->conexao = $conexao;
     }
 
     public function listar() {
-        return $this->con->query("SELECT * FROM usuarios ORDER BY id DESC");
+        return $this->conexao->query("SELECT * FROM usuarios ORDER BY id DESC");
     }
 
     public function criar($dados) {
         $sql = "INSERT INTO usuarios (username, first_name, last_name, email, senha)
                 VALUES (:username, :first_name, :last_name, :email, :senha)";
-        $stmt = $this->con->prepare($sql);
+        $stmt = $this->conexao->prepare($sql);
         return $stmt->execute([
             ':username' => $dados['username'],
             ':first_name' => $dados['first_name'] ?? null,
@@ -28,7 +26,7 @@ class Usuario {
     }
 
     public function buscarPorId($id) {
-        $stmt = $this->con->prepare("SELECT * FROM usuarios WHERE id=:id");
+        $stmt = $this->conexao->prepare("SELECT * FROM usuarios WHERE id=:id");
         $stmt->execute(['id'=>$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -36,7 +34,7 @@ class Usuario {
     public function atualizar($id, $dados) {
         $sql = "UPDATE usuarios SET username=:username, first_name=:first_name, 
                 last_name=:last_name, email=:email WHERE id=:id";
-        $stmt = $this->con->prepare($sql);
+        $stmt = $this->conexao->prepare($sql);
         return $stmt->execute([
             ':username' => $dados['username'],
             ':first_name' => $dados['first_name'] ?? null,
@@ -47,7 +45,7 @@ class Usuario {
     }
 
     public function deletar($id) {
-        $stmt = $this->con->prepare("DELETE FROM usuarios WHERE id=:id");
+        $stmt = $this->conexao->prepare("DELETE FROM usuarios WHERE id=:id");
         return $stmt->execute(['id'=>$id]);
     }
 
@@ -57,8 +55,8 @@ class Usuario {
             return $this->listar()->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        $row = $this->buscarPorId($id);
-        return $row ?: null;
+        $registro = $this->buscarPorId($id);
+        return $registro ?: null;
     }
 
     public function post($dados) {

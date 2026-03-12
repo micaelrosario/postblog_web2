@@ -1,11 +1,13 @@
 <?php
 
-defined('ACCESS') or die('Acesso negado');
-
 $idEdicao = (int)($_GET['edit'] ?? 0);
 $usuarioEdicao = $idEdicao > 0 ? $modeloUsuario->get($idEdicao) : null;
 
 $usuarios = $modeloUsuario->get();
+
+$acaoFormulario = $usuarioEdicao
+    ? baseUrl('/usuarios/' . (int)($usuarioEdicao['id'] ?? 0))
+    : baseUrl('/usuarios');
 
 ?>
 
@@ -17,11 +19,10 @@ $usuarios = $modeloUsuario->get();
             <div class="card-body">
                 <h2 class="h5 mb-3"><?php echo $usuarioEdicao ? 'Editar Usuário' : 'Novo Usuário'; ?></h2>
 
-                <form method="post" action="<?php echo e(baseUrl('/usuarios')); ?>">
-                    <input type="hidden" name="action" value="<?php echo $usuarioEdicao ? 'update' : 'create'; ?>">
-                    <?php if ($usuarioEdicao) { ?>
-                        <input type="hidden" name="id" value="<?php echo e($usuarioEdicao['id']); ?>">
-                    <?php } ?>
+                <form method="post"
+                    action="<?php echo e($acaoFormulario); ?>"
+                    <?php if ($usuarioEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo e(baseUrl('/usuarios')); ?>"<?php } ?>
+                >
 
                     <div class="mb-3">
                         <label class="form-label" for="username">Username</label>
@@ -105,9 +106,7 @@ $usuarios = $modeloUsuario->get();
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-secondary" href="<?php echo e(baseUrl('/usuarios') . '?edit=' . (int)$usuario['id']); ?>">Editar</a>
 
-                                        <form method="post" action="<?php echo e(baseUrl('/usuarios')); ?>" class="d-inline" onsubmit="return confirm('Remover este usuário?');">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?php echo e($usuario['id']); ?>">
+                                        <form method="post" action="<?php echo e(baseUrl('/usuarios/' . (int)$usuario['id'])); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo e(baseUrl('/usuarios')); ?>" onsubmit="return confirm('Remover este usuário?');">
                                             <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                         </form>
                                     </td>
