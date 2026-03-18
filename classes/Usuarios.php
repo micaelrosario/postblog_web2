@@ -42,13 +42,6 @@ class Usuarios
 
         Layout::topo('Usuários');
 
-        $mensagem = (string)($_GET['msg'] ?? '');
-        if ($mensagem !== '') {
-            $okUrl = (string)($_GET['ok'] ?? '0');
-            $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
-        }
-
         require_once __DIR__ . '/../views/usuarios.php';
         UsuariosView::render([
             'usuarioEdicao' => $usuarioEdicao,
@@ -86,7 +79,8 @@ class Usuarios
         $sucesso = (bool)$modeloUsuario->post($dadosPost);
         $mensagem = $sucesso ? 'Usuário criado com sucesso.' : 'Erro ao criar usuário.';
 
-        Http::redirect(Http::baseUrl('/usuarios') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), 303);
+        Http::setFlash($mensagem, $sucesso ? 'success' : 'danger');
+        Http::redirect(Http::baseUrl('/usuarios'), 303);
         exit;
     }
 

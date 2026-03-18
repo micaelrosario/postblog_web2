@@ -31,6 +31,7 @@ final class PostsView
                                 action="<?php echo Http::e($acaoFormulario); ?>"
                                 <?php if ($postEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo Http::e($urlRetorno); ?>"<?php } ?>
                             >
+                                <?php echo Http::csrfField(); ?>
 
                                 <div class="mb-3">
                                     <label class="form-label" for="titulo">Título</label>
@@ -92,6 +93,8 @@ final class PostsView
                     <div class="vstack gap-3">
                         <?php foreach ($posts as $post) {
                             $titulo = (string)($post['titulo'] ?? '');
+                            $postId = (int)($post['id'] ?? 0);
+                            $urlDetalhes = $postId > 0 ? Http::baseUrl('/posts/' . $postId) : '';
                             $imagem = trim((string)($post['imagem'] ?? ''));
                             if ($imagem === '[object File]') {
                                 $imagem = '';
@@ -158,7 +161,13 @@ final class PostsView
 
                                     <div class="col-md-8">
                                         <div class="card-body">
-                                            <h3 class="h5 card-title mb-1"><?php echo Http::e($titulo); ?></h3>
+                                            <h3 class="h5 card-title mb-1">
+                                                <?php if ($urlDetalhes !== '') { ?>
+                                                    <a class="link-dark text-decoration-none" href="<?php echo Http::e($urlDetalhes); ?>"><?php echo Http::e($titulo); ?></a>
+                                                <?php } else { ?>
+                                                    <?php echo Http::e($titulo); ?>
+                                                <?php } ?>
+                                            </h3>
                                             <p class="card-text mb-2"><small class="text-body-secondary">Por <?php echo Http::e($autorNome); ?> • <?php echo Http::e($data); ?></small></p>
                                             <p class="card-text mb-0"><?php echo Http::e($descricao); ?></p>
                                         </div>
@@ -168,6 +177,7 @@ final class PostsView
                                                 <a class="btn btn-sm btn-outline-secondary" href="<?php echo Http::e($urlAdmin . '?edit=' . (int)($post['id'] ?? 0)); ?>">Editar</a>
 
                                                 <form method="post" action="<?php echo Http::e(Http::baseUrl('/posts/' . (int)($post['id'] ?? 0))); ?>" class="m-0" data-metodo-rest="DELETE" data-redirecionar="<?php echo Http::e($urlRetorno); ?>" onsubmit="return confirm('Remover este post?');">
+                                                    <?php echo Http::csrfField(); ?>
                                                     <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                                 </form>
                                             </div>

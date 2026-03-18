@@ -24,6 +24,7 @@ final class PerfisView
                             action="<?php echo Http::e($acaoFormulario); ?>"
                             <?php if ($perfilEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo Http::e(Http::baseUrl('/perfis')); ?>"<?php } ?>
                         >
+                            <?php echo Http::csrfField(); ?>
 
                             <div class="mb-3">
                                 <label class="form-label" for="usuario_id">Usuário</label>
@@ -106,6 +107,7 @@ final class PerfisView
                                                 <a class="btn btn-sm btn-outline-secondary" href="<?php echo Http::e(Http::baseUrl('/perfis') . '?edit=' . (int)($perfil['id'] ?? 0)); ?>">Editar</a>
 
                                                 <form method="post" action="<?php echo Http::e(Http::baseUrl('/perfis/' . (int)($perfil['id'] ?? 0))); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo Http::e(Http::baseUrl('/perfis')); ?>" onsubmit="return confirm('Remover este perfil?');">
+                                                    <?php echo Http::csrfField(); ?>
                                                     <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                                 </form>
                                             </td>

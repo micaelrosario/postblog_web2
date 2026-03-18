@@ -18,6 +18,12 @@ class Posts
 
     public function get($segmentosUrl)
     {
+        $idDetalhes = $this->obterId($segmentosUrl);
+        if ($idDetalhes > 0) {
+            $this->renderDetalhes($idDetalhes);
+            return;
+        }
+
         try {
             $conexao = $this->conectar();
         } catch (Exception $e) {
@@ -71,14 +77,10 @@ class Posts
             ? Http::baseUrl('/posts/' . (int)($postEdicao['id'] ?? 0))
             : Http::baseUrl('/posts');
 
-        Layout::topo('Início');
+        $rota = strtolower((string)($segmentosUrl[0] ?? ''));
+        $tituloPagina = $rota === 'inicio' ? "Filmmakers' Blog" : 'Início';
 
-        $mensagem = (string)($_GET['msg'] ?? '');
-        if ($mensagem !== '') {
-            $okUrl = (string)($_GET['ok'] ?? '0');
-            $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
-        }
+        Layout::topo($tituloPagina);
 
         require_once __DIR__ . '/../views/posts.php';
         PostsView::render([
@@ -97,9 +99,92 @@ class Posts
         Layout::rodape();
     }
 
+    private function renderDetalhes(int $idPost): void
+    {
+        try {
+            $conexao = $this->conectar();
+        } catch (Exception $e) {
+            http_response_code(500);
+            Layout::topo('Erro');
+            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
+            return;
+        }
+
+        $modeloPost = new Post($conexao);
+        $modeloCategoria = new Categoria($conexao);
+        $modeloUsuario = new Usuario($conexao);
+        $modeloComentario = new Comentario($conexao);
+
+        $post = $modeloPost->get($idPost);
+        if (!$post) {
+            http_response_code(404);
+            Layout::topo('Post não encontrado');
+            echo '<div class="alert alert-warning">Post não encontrado.</div>';
+            echo '<a class="btn btn-primary" href="' . Http::e(Http::baseUrl('/inicio')) . '">Ir para Início</a>';
+            Layout::rodape();
+            return;
+        }
+
+        $usuarios = $modeloUsuario->get();
+        $categorias = $modeloCategoria->get();
+        $comentarios = $modeloComentario->listarPorPostId($idPost);
+
+        $usuarioPorId = [];
+        foreach ($usuarios as $usuario) {
+            $id = (int)($usuario['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $nomeExibicao = (string)($usuario['username'] ?? '');
+            if ($nomeExibicao === '') {
+                $nome = trim((string)($usuario['first_name'] ?? '') . ' ' . (string)($usuario['last_name'] ?? ''));
+                $nomeExibicao = $nome !== '' ? $nome : ('Usuário #' . $id);
+            }
+
+            $usuarioPorId[$id] = $nomeExibicao;
+        }
+
+        $categoriaPorId = [];
+        foreach ($categorias as $categoria) {
+            $id = (int)($categoria['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $categoriaPorId[$id] = (string)($categoria['nome'] ?? '');
+        }
+
+        $titulo = (string)($post['titulo'] ?? 'Post');
+        Layout::topo($titulo !== '' ? $titulo : 'Post');
+
+        require_once __DIR__ . '/../views/post_detalhes.php';
+        PostDetalhesView::render([
+            'post' => $post,
+            'comentarios' => $comentarios,
+            'usuarioPorId' => $usuarioPorId,
+            'categoriaPorId' => $categoriaPorId,
+            'usuarioAutenticado' => !empty($_SESSION['usuario_id']),
+            'urlVoltar' => Http::baseUrl('/inicio'),
+            'urlAdicionarComentario' => Http::baseUrl('/posts/' . $idPost . '/comentarios'),
+            'urlLogin' => Http::baseUrl('/login'),
+        ]);
+
+        Layout::rodape();
+    }
+
     public function post($segmentosUrl)
     {
         $id = $this->obterId($segmentosUrl);
+
+        $subrecurso = strtolower((string)($segmentosUrl[2] ?? ''));
+        if ($id > 0 && $subrecurso === 'comentarios') {
+            $this->criarComentarioParaPost($id);
+            return;
+        }
+
         if ($id > 0) {
             http_response_code(405);
             echo 'Método HTTP não suportado.';
@@ -123,7 +208,62 @@ class Posts
         $sucesso = (bool)$modeloPost->post($dadosPost);
         $mensagem = $sucesso ? 'Post criado com sucesso.' : 'Erro ao criar post.';
 
-        header('Location: ' . Http::baseUrl('/adicionar-posts') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
+        Http::setFlash($mensagem, $sucesso ? 'success' : 'danger');
+        Http::redirect(Http::baseUrl('/adicionar-posts'), 303);
+        exit;
+    }
+
+    private function criarComentarioParaPost(int $idPost): void
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        if ($usuarioId <= 0) {
+            Http::setFlash('Faça login para comentar.', 'danger');
+            Http::redirect(Http::baseUrl('/login'), 303);
+            exit;
+        }
+
+        $dadosPost = Http::limparArray((array)$_POST);
+        $texto = trim((string)($dadosPost['texto'] ?? ''));
+
+        if ($texto === '') {
+            Http::setFlash('O comentário não pode estar vazio.', 'danger');
+            Http::redirect(Http::baseUrl('/posts/' . $idPost), 303);
+            exit;
+        }
+
+        try {
+            $conexao = $this->conectar();
+        } catch (Exception $e) {
+            http_response_code(500);
+            Layout::topo('Erro');
+            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
+            return;
+        }
+
+        $modeloPost = new Post($conexao);
+        $post = $modeloPost->get($idPost);
+        if (!$post) {
+            http_response_code(404);
+            Layout::topo('Post não encontrado');
+            echo '<div class="alert alert-warning">Post não encontrado.</div>';
+            echo '<a class="btn btn-primary" href="' . Http::e(Http::baseUrl('/inicio')) . '">Ir para Início</a>';
+            Layout::rodape();
+            return;
+        }
+
+        $modeloComentario = new Comentario($conexao);
+        $sucesso = (bool)$modeloComentario->post([
+            'post_id' => $idPost,
+            'autor_id' => $usuarioId,
+            'texto' => $texto,
+        ]);
+
+        $mensagem = $sucesso ? 'Comentário adicionado com sucesso.' : 'Erro ao adicionar comentário.';
+
+        Http::setFlash($mensagem, $sucesso ? 'success' : 'danger');
+        Http::redirect(Http::baseUrl('/posts/' . $idPost), 303);
         exit;
     }
 

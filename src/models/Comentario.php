@@ -12,6 +12,12 @@ class Comentario {
         return $this->conexao->query("SELECT * FROM comentario ORDER BY criado_em DESC");
     }
 
+    public function listarPorPostId($postId) {
+        $stmt = $this->conexao->prepare("SELECT * FROM comentario WHERE post_id = :post_id ORDER BY criado_em DESC");
+        $stmt->execute(['post_id' => $postId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function criar($dados) {
         $sql = "INSERT INTO comentario (post_id, autor_id, texto) 
                 VALUES (:post_id, :autor_id, :texto)";

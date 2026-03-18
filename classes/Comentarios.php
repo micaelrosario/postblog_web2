@@ -46,13 +46,6 @@ class Comentarios
 
         Layout::topo('Comentários');
 
-        $mensagem = (string)($_GET['msg'] ?? '');
-        if ($mensagem !== '') {
-            $okUrl = (string)($_GET['ok'] ?? '0');
-            $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
-        }
-
         require_once __DIR__ . '/../views/comentarios.php';
         ComentariosView::render([
             'comentarioEdicao' => $comentarioEdicao,
@@ -91,7 +84,8 @@ class Comentarios
         $sucesso = (bool)$modeloComentario->post($dadosPost);
         $mensagem = $sucesso ? 'Comentário criado com sucesso.' : 'Erro ao criar comentário.';
 
-        Http::redirect(Http::baseUrl('/comentarios') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), 303);
+        Http::setFlash($mensagem, $sucesso ? 'success' : 'danger');
+        Http::redirect(Http::baseUrl('/comentarios'), 303);
         exit;
     }
 

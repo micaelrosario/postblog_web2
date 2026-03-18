@@ -30,13 +30,6 @@ final class Auth
 
         Layout::topo($titulo, false);
 
-        $mensagem = (string)($_GET['msg'] ?? '');
-        if ($mensagem !== '') {
-            $okUrl = (string)($_GET['ok'] ?? '0');
-            $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
-        }
-
         require_once __DIR__ . '/../views/auth.php';
 
         if ($rota === 'cadastro') {
@@ -77,10 +70,8 @@ final class Auth
         $senha = (string)($_POST['senha'] ?? '');
 
         if ($username === '' || $senha === '') {
-            Http::redirect(
-                Http::baseUrl('/login') . '?ok=0&msg=' . rawurlencode('Username e senha são obrigatórios.'),
-                303
-            );
+            Http::setFlash('Username e senha são obrigatórios.', 'danger');
+            Http::redirect(Http::baseUrl('/login'), 303);
             return;
         }
 
@@ -91,10 +82,8 @@ final class Auth
             $usuario = $modeloUsuario->buscarPorUsername($username);
 
             if (!$usuario || !password_verify($senha, (string)($usuario['senha'] ?? ''))) {
-                Http::redirect(
-                    Http::baseUrl('/login') . '?ok=0&msg=' . rawurlencode('Credenciais inválidas.'),
-                    303
-                );
+                Http::setFlash('Credenciais inválidas.', 'danger');
+                Http::redirect(Http::baseUrl('/login'), 303);
                 return;
             }
 
@@ -110,15 +99,11 @@ final class Auth
             $mensagem = (string)$e->getCode() === '2002'
                 ? 'Falha ao conectar no banco de dados. Verifique se o MySQL está rodando e a configuração em config/database.php.'
                 : 'Erro ao efetuar login.';
-            Http::redirect(
-                Http::baseUrl('/login') . '?ok=0&msg=' . rawurlencode($mensagem),
-                303
-            );
+            Http::setFlash($mensagem, 'danger');
+            Http::redirect(Http::baseUrl('/login'), 303);
         } catch (Exception $e) {
-            Http::redirect(
-                Http::baseUrl('/login') . '?ok=0&msg=' . rawurlencode('Erro ao efetuar login.'),
-                303
-            );
+            Http::setFlash('Erro ao efetuar login.', 'danger');
+            Http::redirect(Http::baseUrl('/login'), 303);
         }
     }
 
@@ -131,10 +116,8 @@ final class Auth
         $email = trim((string)($_POST['email'] ?? ''));
 
         if ($username === '' || $senha === '') {
-            Http::redirect(
-                Http::baseUrl('/cadastro') . '?ok=0&msg=' . rawurlencode('Username e senha são obrigatórios.'),
-                303
-            );
+            Http::setFlash('Username e senha são obrigatórios.', 'danger');
+            Http::redirect(Http::baseUrl('/cadastro'), 303);
             return;
         }
 
@@ -152,20 +135,16 @@ final class Auth
 
             $sucesso = (bool)$modeloUsuario->post($dados);
             if (!$sucesso) {
-                Http::redirect(
-                    Http::baseUrl('/cadastro') . '?ok=0&msg=' . rawurlencode('Não foi possível criar o usuário.'),
-                    303
-                );
+                Http::setFlash('Não foi possível criar o usuário.', 'danger');
+                Http::redirect(Http::baseUrl('/cadastro'), 303);
                 return;
             }
 
             // Autentica automaticamente após o cadastro.
             $usuario = $modeloUsuario->buscarPorUsername($username);
             if (!$usuario) {
-                Http::redirect(
-                    Http::baseUrl('/login') . '?ok=1&msg=' . rawurlencode('Usuário criado. Faça login.'),
-                    303
-                );
+                Http::setFlash('Usuário criado. Faça login.', 'success');
+                Http::redirect(Http::baseUrl('/login'), 303);
                 return;
             }
 
@@ -176,10 +155,8 @@ final class Auth
             // Mantém "senha" na sessão conforme solicitado (armazenando o HASH do banco, não a senha em texto).
             $_SESSION['senha'] = (string)($usuario['senha'] ?? '');
 
-            Http::redirect(
-                Http::baseUrl('/posts') . '?ok=1&msg=' . rawurlencode('Conta criada e login efetuado.'),
-                303
-            );
+            Http::setFlash('Conta criada e login efetuado.', 'success');
+            Http::redirect(Http::baseUrl('/posts'), 303);
         } catch (PDOException $e) {
             $codigo = (string)$e->getCode();
             if ($codigo === '23000') {
@@ -190,15 +167,11 @@ final class Auth
                 $mensagem = 'Não foi possível criar o usuário.';
             }
 
-            Http::redirect(
-                Http::baseUrl('/cadastro') . '?ok=0&msg=' . rawurlencode($mensagem),
-                303
-            );
+            Http::setFlash($mensagem, 'danger');
+            Http::redirect(Http::baseUrl('/cadastro'), 303);
         } catch (Exception $e) {
-            Http::redirect(
-                Http::baseUrl('/cadastro') . '?ok=0&msg=' . rawurlencode('Erro ao criar usuário.'),
-                303
-            );
+            Http::setFlash('Erro ao criar usuário.', 'danger');
+            Http::redirect(Http::baseUrl('/cadastro'), 303);
         }
     }
 
@@ -210,9 +183,7 @@ final class Auth
             session_destroy();
         }
 
-        Http::redirect(
-            Http::baseUrl('/login') . '?ok=1&msg=' . rawurlencode('Logout efetuado.'),
-            303
-        );
+        Http::setFlash('Logout efetuado.', 'success');
+        Http::redirect(Http::baseUrl('/login'), 303);
     }
 }

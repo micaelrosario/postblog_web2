@@ -22,6 +22,7 @@ final class UsuariosView
                             action="<?php echo Http::e($acaoFormulario); ?>"
                             <?php if ($usuarioEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo Http::e(Http::baseUrl('/usuarios')); ?>"<?php } ?>
                         >
+                            <?php echo Http::csrfField(); ?>
 
                             <div class="mb-3">
                                 <label class="form-label" for="username">Username</label>
@@ -106,6 +107,7 @@ final class UsuariosView
                                                 <a class="btn btn-sm btn-outline-secondary" href="<?php echo Http::e(Http::baseUrl('/usuarios') . '?edit=' . (int)($usuario['id'] ?? 0)); ?>">Editar</a>
 
                                                 <form method="post" action="<?php echo Http::e(Http::baseUrl('/usuarios/' . (int)($usuario['id'] ?? 0))); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo Http::e(Http::baseUrl('/usuarios')); ?>" onsubmit="return confirm('Remover este usuário?');">
+                                                    <?php echo Http::csrfField(); ?>
                                                     <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                                 </form>
                                             </td>

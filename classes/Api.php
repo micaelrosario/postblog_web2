@@ -55,7 +55,6 @@ class Api
             $_SESSION['usuario_id'] = (int)($usuario['id'] ?? 0);
             $_SESSION['username'] = (string)($usuario['username'] ?? '');
             $_SESSION['login'] = (string)($usuario['username'] ?? '');
-            // Mantém "senha" na sessão conforme solicitado (armazenando o HASH do banco, não a senha em texto).
             $_SESSION['senha'] = (string)($usuario['senha'] ?? '');
 
             Http::jsonResponse([

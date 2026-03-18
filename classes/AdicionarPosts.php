@@ -11,10 +11,8 @@ class AdicionarPosts
     {
         $usuarioAutenticado = !empty($_SESSION['usuario_id']);
         if (!$usuarioAutenticado) {
-            Http::redirect(
-                Http::baseUrl('/login') . '?ok=0&msg=' . rawurlencode('Faça login para continuar.'),
-                303
-            );
+            Http::setFlash('Faça login para continuar.', 'danger');
+            Http::redirect(Http::baseUrl('/login'), 303);
             return;
         }
 
@@ -71,13 +69,6 @@ class AdicionarPosts
             : Http::baseUrl('/posts');
 
         Layout::topo('Adicionar Post');
-
-        $mensagem = (string)($_GET['msg'] ?? '');
-        if ($mensagem !== '') {
-            $okUrl = (string)($_GET['ok'] ?? '0');
-            $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
-        }
 
         require_once __DIR__ . '/../views/posts.php';
         PostsView::render([

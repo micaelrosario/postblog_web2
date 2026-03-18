@@ -42,13 +42,6 @@ class Categorias
 
         Layout::topo('Categorias');
 
-        $mensagem = (string)($_GET['msg'] ?? '');
-        if ($mensagem !== '') {
-            $okUrl = (string)($_GET['ok'] ?? '0');
-            $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
-        }
-
         require_once __DIR__ . '/../views/categorias.php';
         CategoriasView::render([
             'categoriaEdicao' => $categoriaEdicao,
@@ -85,7 +78,8 @@ class Categorias
         $sucesso = (bool)$modeloCategoria->post($dadosPost);
         $mensagem = $sucesso ? 'Categoria criada com sucesso.' : 'Erro ao criar categoria.';
 
-        Http::redirect(Http::baseUrl('/categorias') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), 303);
+        Http::setFlash($mensagem, $sucesso ? 'success' : 'danger');
+        Http::redirect(Http::baseUrl('/categorias'), 303);
         exit;
     }
 

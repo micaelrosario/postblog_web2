@@ -12,6 +12,7 @@ final class AuthView
                         <h1 class="h4 mb-3">Login</h1>
 
                         <form method="post" action="<?php echo Http::e(Http::baseUrl('/login')); ?>">
+                            <?php echo Http::csrfField(); ?>
                             <div class="mb-3">
                                 <label class="form-label" for="username">Username</label>
                                 <input class="form-control" id="username" name="username" required autofocus>
@@ -44,6 +45,7 @@ final class AuthView
                         <h1 class="h4 mb-3">Cadastro</h1>
 
                         <form method="post" action="<?php echo Http::e(Http::baseUrl('/cadastro')); ?>">
+                            <?php echo Http::csrfField(); ?>
                             <div class="mb-3">
                                 <label class="form-label" for="username">Username</label>
                                 <input class="form-control" id="username" name="username" required autofocus>

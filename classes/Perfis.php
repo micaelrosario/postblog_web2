@@ -60,13 +60,6 @@ class Perfis
 
         Layout::topo('Perfis');
 
-        $mensagem = (string)($_GET['msg'] ?? '');
-        if ($mensagem !== '') {
-            $okUrl = (string)($_GET['ok'] ?? '0');
-            $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
-        }
-
         require_once __DIR__ . '/../views/perfis.php';
         PerfisView::render([
             'perfilEdicao' => $perfilEdicao,
@@ -105,7 +98,8 @@ class Perfis
         $sucesso = (bool)$modeloPerfil->post($dadosPost);
         $mensagem = $sucesso ? 'Perfil criado com sucesso.' : 'Erro ao criar perfil.';
 
-        Http::redirect(Http::baseUrl('/perfis') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), 303);
+        Http::setFlash($mensagem, $sucesso ? 'success' : 'danger');
+        Http::redirect(Http::baseUrl('/perfis'), 303);
         exit;
     }
 

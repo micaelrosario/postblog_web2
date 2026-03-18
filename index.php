@@ -141,10 +141,37 @@ if (!$usuarioAutenticado && $chaveRota !== 'api') {
             exit;
         }
 
-        Http::redirect(
-            Http::baseUrl('/login') . '?ok=0&msg=' . rawurlencode('Faça login para continuar.'),
-            303
-        );
+        Http::setFlash('Faça login para continuar.', 'danger');
+        Http::redirect(Http::baseUrl('/login'), 303);
+        exit;
+    }
+}
+
+// Proteção simples de CSRF para rotas HTML (sessão/cookies).
+// - Token gerado por sessão (meta + campo hidden nos forms)
+// - Validação em POST/PUT/DELETE
+// - Token pode vir via header X-CSRF-Token (necessário em DELETE via fetch)
+if ($chaveRota !== 'api' && in_array($metodoRequisicao, ['POST', 'PUT', 'DELETE'], true)) {
+    $tokenCsrf = trim((string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
+
+    // Para POST tradicional, permite enviar no corpo como campo hidden.
+    if ($tokenCsrf === '' && $metodoRequisicao === 'POST') {
+        $tokenCsrf = trim((string)($_POST['_csrf'] ?? ''));
+    }
+
+    if (!Http::csrfValido($tokenCsrf)) {
+        if (in_array($metodoRequisicao, ['PUT', 'DELETE'], true)) {
+            Http::jsonResponse([
+                'sucesso' => false,
+                'mensagem' => 'Requisição inválida (CSRF). Atualize a página e tente novamente.',
+            ], 403);
+            exit;
+        }
+
+        http_response_code(403);
+        Layout::topo('403');
+        echo '<div class="alert alert-danger">Requisição inválida (CSRF). Atualize a página e tente novamente.</div>';
+        Layout::rodape();
         exit;
     }
 }

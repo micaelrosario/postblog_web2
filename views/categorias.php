@@ -22,6 +22,7 @@ final class CategoriasView
                             action="<?php echo Http::e($acaoFormulario); ?>"
                             <?php if ($categoriaEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo Http::e(Http::baseUrl('/categorias')); ?>"<?php } ?>
                         >
+                            <?php echo Http::csrfField(); ?>
 
                             <div class="mb-3">
                                 <label class="form-label" for="nome">Nome</label>
@@ -68,6 +69,7 @@ final class CategoriasView
                                                 <a class="btn btn-sm btn-outline-secondary" href="<?php echo Http::e(Http::baseUrl('/categorias') . '?edit=' . (int)($categoria['id'] ?? 0)); ?>">Editar</a>
 
                                                 <form method="post" action="<?php echo Http::e(Http::baseUrl('/categorias/' . (int)($categoria['id'] ?? 0))); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo Http::e(Http::baseUrl('/categorias')); ?>" onsubmit="return confirm('Remover esta categoria?');">
+                                                    <?php echo Http::csrfField(); ?>
                                                     <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                                 </form>
                                             </td>

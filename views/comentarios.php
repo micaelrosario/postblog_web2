@@ -24,6 +24,7 @@ final class ComentariosView
                             action="<?php echo Http::e($acaoFormulario); ?>"
                             <?php if ($comentarioEdicao) { ?>data-metodo-rest="PUT" data-redirecionar="<?php echo Http::e(Http::baseUrl('/comentarios')); ?>"<?php } ?>
                         >
+                            <?php echo Http::csrfField(); ?>
 
                             <div class="mb-3">
                                 <label class="form-label" for="post_id">Post</label>
@@ -110,6 +111,7 @@ final class ComentariosView
                                                 <a class="btn btn-sm btn-outline-secondary" href="<?php echo Http::e(Http::baseUrl('/comentarios') . '?edit=' . (int)($comentario['id'] ?? 0)); ?>">Editar</a>
 
                                                 <form method="post" action="<?php echo Http::e(Http::baseUrl('/comentarios/' . (int)($comentario['id'] ?? 0))); ?>" class="d-inline" data-metodo-rest="DELETE" data-redirecionar="<?php echo Http::e(Http::baseUrl('/comentarios')); ?>" onsubmit="return confirm('Remover este comentário?');">
+                                                    <?php echo Http::csrfField(); ?>
                                                     <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
                                                 </form>
                                             </td>
