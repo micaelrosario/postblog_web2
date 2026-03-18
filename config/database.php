@@ -2,7 +2,8 @@
 
 class Database
 {
-    private $servidor = 'localhost';
+    private $servidor = '127.0.0.1';
+    private $porta = 3306;
     private $banco = 'blogpost';
     private $usuario = 'root';
     private $senha = '';
@@ -16,7 +17,7 @@ class Database
         }
 
         $this->conexao = new PDO(
-            "mysql:host={$this->servidor};dbname={$this->banco};charset=utf8mb4",
+            "mysql:host={$this->servidor};port={$this->porta};dbname={$this->banco};charset=utf8mb4",
             $this->usuario,
             $this->senha,
             [

@@ -22,10 +22,10 @@ class Posts
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
@@ -33,18 +33,68 @@ class Posts
         $modeloCategoria = new Categoria($conexao);
         $modeloUsuario = new Usuario($conexao);
 
-        topo('Posts');
+        // Visão do leitor: não exibe formulário nem ações, mesmo se estiver logado.
+        $usuarioAutenticado = false;
+        $postEdicao = null;
+
+        $usuarios = $modeloUsuario->get();
+        $categorias = $modeloCategoria->get();
+        $posts = $modeloPost->get();
+
+        $usuarioPorId = [];
+        foreach ($usuarios as $usuario) {
+            $id = (int)($usuario['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $nomeExibicao = (string)($usuario['username'] ?? '');
+            if ($nomeExibicao === '') {
+                $nome = trim((string)($usuario['first_name'] ?? '') . ' ' . (string)($usuario['last_name'] ?? ''));
+                $nomeExibicao = $nome !== '' ? $nome : ('Usuário #' . $id);
+            }
+
+            $usuarioPorId[$id] = $nomeExibicao;
+        }
+
+        $categoriaPorId = [];
+        foreach ($categorias as $categoria) {
+            $id = (int)($categoria['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $categoriaPorId[$id] = (string)($categoria['nome'] ?? '');
+        }
+
+        $acaoFormulario = $postEdicao
+            ? Http::baseUrl('/posts/' . (int)($postEdicao['id'] ?? 0))
+            : Http::baseUrl('/posts');
+
+        Layout::topo('Início');
 
         $mensagem = (string)($_GET['msg'] ?? '');
         if ($mensagem !== '') {
             $okUrl = (string)($_GET['ok'] ?? '0');
             $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . e($tipo) . '">' . e($mensagem) . '</div>';
+            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
         }
 
-        require __DIR__ . '/../views/posts.php';
+        require_once __DIR__ . '/../views/posts.php';
+        PostsView::render([
+            'postEdicao' => $postEdicao,
+            'usuarios' => $usuarios,
+            'categorias' => $categorias,
+            'posts' => $posts,
+            'usuarioPorId' => $usuarioPorId,
+            'categoriaPorId' => $categoriaPorId,
+            'acaoFormulario' => $acaoFormulario,
+            'usuarioAutenticado' => $usuarioAutenticado,
+            'urlLeitor' => Http::baseUrl('/posts'),
+            'urlAdmin' => Http::baseUrl('/adicionar-posts'),
+        ]);
 
-        rodape();
+        Layout::rodape();
     }
 
     public function post($segmentosUrl)
@@ -60,19 +110,20 @@ class Posts
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
         $modeloPost = new Post($conexao);
 
-        $sucesso = (bool)$modeloPost->post($_POST);
+        $dadosPost = Http::limparArray((array)$_POST);
+        $sucesso = (bool)$modeloPost->post($dadosPost);
         $mensagem = $sucesso ? 'Post criado com sucesso.' : 'Erro ao criar post.';
 
-        header('Location: ' . baseUrl('/posts') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
+        header('Location: ' . Http::baseUrl('/adicionar-posts') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
         exit;
     }
 
@@ -80,7 +131,7 @@ class Posts
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -88,14 +139,14 @@ class Posts
             $conexao = $this->conectar();
             $modeloPost = new Post($conexao);
 
-            $dadosPut = lerDadosCorpo();
+            $dadosPut = Http::lerDadosCorpoLimpo();
 
             $sucesso = (bool)$modeloPost->put($id, $dadosPut);
             $mensagem = $sucesso ? 'Post atualizado com sucesso.' : 'Erro ao atualizar post.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 
@@ -103,7 +154,7 @@ class Posts
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -114,9 +165,9 @@ class Posts
             $sucesso = (bool)$modeloPost->delete($id);
             $mensagem = $sucesso ? 'Post removido com sucesso.' : 'Erro ao remover post.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 }

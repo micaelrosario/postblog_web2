@@ -22,10 +22,10 @@ class Comentarios
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
@@ -33,18 +33,36 @@ class Comentarios
         $modeloPost = new Post($conexao);
         $modeloUsuario = new Usuario($conexao);
 
-        topo('Comentários');
+        $idEdicao = (int)($_GET['edit'] ?? 0);
+        $comentarioEdicao = $idEdicao > 0 ? $modeloComentario->get($idEdicao) : null;
+
+        $comentarios = $modeloComentario->get();
+        $posts = $modeloPost->get();
+        $usuarios = $modeloUsuario->get();
+
+        $acaoFormulario = $comentarioEdicao
+            ? Http::baseUrl('/comentarios/' . (int)($comentarioEdicao['id'] ?? 0))
+            : Http::baseUrl('/comentarios');
+
+        Layout::topo('Comentários');
 
         $mensagem = (string)($_GET['msg'] ?? '');
         if ($mensagem !== '') {
             $okUrl = (string)($_GET['ok'] ?? '0');
             $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . e($tipo) . '">' . e($mensagem) . '</div>';
+            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
         }
 
-        require __DIR__ . '/../views/comentarios.php';
+        require_once __DIR__ . '/../views/comentarios.php';
+        ComentariosView::render([
+            'comentarioEdicao' => $comentarioEdicao,
+            'comentarios' => $comentarios,
+            'posts' => $posts,
+            'usuarios' => $usuarios,
+            'acaoFormulario' => $acaoFormulario,
+        ]);
 
-        rodape();
+        Layout::rodape();
     }
 
     public function post($segmentosUrl)
@@ -60,19 +78,20 @@ class Comentarios
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
         $modeloComentario = new Comentario($conexao);
 
-        $sucesso = (bool)$modeloComentario->post($_POST);
+        $dadosPost = Http::limparArray((array)$_POST);
+        $sucesso = (bool)$modeloComentario->post($dadosPost);
         $mensagem = $sucesso ? 'Comentário criado com sucesso.' : 'Erro ao criar comentário.';
 
-        header('Location: ' . baseUrl('/comentarios') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
+        Http::redirect(Http::baseUrl('/comentarios') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), 303);
         exit;
     }
 
@@ -80,7 +99,7 @@ class Comentarios
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -88,14 +107,14 @@ class Comentarios
             $conexao = $this->conectar();
             $modeloComentario = new Comentario($conexao);
 
-            $dadosPut = lerDadosCorpo();
+            $dadosPut = Http::lerDadosCorpoLimpo();
 
             $sucesso = (bool)$modeloComentario->put($id, $dadosPut);
             $mensagem = $sucesso ? 'Comentário atualizado com sucesso.' : 'Erro ao atualizar comentário.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 
@@ -103,7 +122,7 @@ class Comentarios
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -114,9 +133,9 @@ class Comentarios
             $sucesso = (bool)$modeloComentario->delete($id);
             $mensagem = $sucesso ? 'Comentário removido com sucesso.' : 'Erro ao remover comentário.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 }

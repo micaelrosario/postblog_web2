@@ -22,28 +22,61 @@ class Perfis
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
         $modeloPerfil = new PerfilAutor($conexao);
         $modeloUsuario = new Usuario($conexao);
 
-        topo('Perfis');
+        $idEdicao = (int)($_GET['edit'] ?? 0);
+        $perfilEdicao = $idEdicao > 0 ? $modeloPerfil->get($idEdicao) : null;
+
+        $perfis = $modeloPerfil->get();
+        $usuarios = $modeloUsuario->get();
+
+        $usuarioPorId = [];
+        foreach ($usuarios as $usuario) {
+            $id = (int)($usuario['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $nomeExibicao = (string)($usuario['username'] ?? '');
+            if ($nomeExibicao === '') {
+                $nome = trim((string)($usuario['first_name'] ?? '') . ' ' . (string)($usuario['last_name'] ?? ''));
+                $nomeExibicao = $nome !== '' ? $nome : ('Usuário #' . $id);
+            }
+
+            $usuarioPorId[$id] = $nomeExibicao;
+        }
+
+        $acaoFormulario = $perfilEdicao
+            ? Http::baseUrl('/perfis/' . (int)($perfilEdicao['id'] ?? 0))
+            : Http::baseUrl('/perfis');
+
+        Layout::topo('Perfis');
 
         $mensagem = (string)($_GET['msg'] ?? '');
         if ($mensagem !== '') {
             $okUrl = (string)($_GET['ok'] ?? '0');
             $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . e($tipo) . '">' . e($mensagem) . '</div>';
+            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
         }
 
-        require __DIR__ . '/../views/perfis.php';
+        require_once __DIR__ . '/../views/perfis.php';
+        PerfisView::render([
+            'perfilEdicao' => $perfilEdicao,
+            'perfis' => $perfis,
+            'usuarios' => $usuarios,
+            'usuarioPorId' => $usuarioPorId,
+            'acaoFormulario' => $acaoFormulario,
+        ]);
 
-        rodape();
+        Layout::rodape();
     }
 
     public function post($segmentosUrl)
@@ -59,19 +92,20 @@ class Perfis
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
         $modeloPerfil = new PerfilAutor($conexao);
 
-        $sucesso = (bool)$modeloPerfil->post($_POST);
+        $dadosPost = Http::limparArray((array)$_POST);
+        $sucesso = (bool)$modeloPerfil->post($dadosPost);
         $mensagem = $sucesso ? 'Perfil criado com sucesso.' : 'Erro ao criar perfil.';
 
-        header('Location: ' . baseUrl('/perfis') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
+        Http::redirect(Http::baseUrl('/perfis') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), 303);
         exit;
     }
 
@@ -79,7 +113,7 @@ class Perfis
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -87,14 +121,14 @@ class Perfis
             $conexao = $this->conectar();
             $modeloPerfil = new PerfilAutor($conexao);
 
-            $dadosPut = lerDadosCorpo();
+            $dadosPut = Http::lerDadosCorpoLimpo();
 
             $sucesso = (bool)$modeloPerfil->put($id, $dadosPut);
             $mensagem = $sucesso ? 'Perfil atualizado com sucesso.' : 'Erro ao atualizar perfil.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 
@@ -102,7 +136,7 @@ class Perfis
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -113,9 +147,9 @@ class Perfis
             $sucesso = (bool)$modeloPerfil->delete($id);
             $mensagem = $sucesso ? 'Perfil removido com sucesso.' : 'Erro ao remover perfil.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 }

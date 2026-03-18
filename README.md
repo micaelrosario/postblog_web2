@@ -31,7 +31,7 @@ Sistema completo de gerenciamento de blog com API REST (GET, POST, PUT, DELETE) 
    - Importe o arquivo `sql/blogpost.sql`
 
 3. **Configure a conexão** (se necessário):
-   - Edite `src/database.php`
+  - Edite `config/database.php`
    - Ajuste as credenciais do banco de dados
 
 4. **Inicie o XAMPP**:
@@ -54,6 +54,9 @@ Sistema completo de gerenciamento de blog com API REST (GET, POST, PUT, DELETE) 
 | `/usuarios` | Gerenciar usuários |
 | `/comentarios` | Gerenciar comentários |
 | `/perfis` | Gerenciar perfis |
+| `/login` | Login |
+| `/cadastro` | Criar usuário (público) |
+| `/logout` | Logout |
 
 ## 🔌 API REST
 
@@ -65,6 +68,12 @@ O `index.php` da raiz é o centralizador. Ele roteia:
 - **API (JSON)**: `/api/{recurso}` (recomendado) e também `?resource=...` (compatibilidade)
 
 O roteamento da API fica na classe `Api` em `classes/Api.php`.
+
+### 🔐 Autenticação (API)
+
+- `POST /api/login` com `username` e `senha` (JSON ou form-urlencoded) → cria sessão
+- `POST /api/logout` → encerra sessão
+- Requisições `POST/PUT/DELETE` para os recursos exigem autenticação (retornam `401` se não autenticado)
 
 Exemplos (API):
 
@@ -166,31 +175,25 @@ postblog_web2/
 ├── index.php                   # Front controller (roteador)
 ├── .htaccess                   # Rewrite: index.php?url=...
 ├── router.php                  # Router p/ php -S (desenvolvimento)
-├── helpers.php                 # Shim: carrega views/templates.php
-├── api/
-│   └── index.php               # Shim (compat): delega para o index.php
 ├── classes/
 │   ├── Posts.php               # Rota /posts (HTML)
 │   ├── Categorias.php          # Rota /categorias (HTML)
 │   ├── Usuarios.php            # Rota /usuarios (HTML)
 │   ├── Comentarios.php         # Rota /comentarios (HTML)
 │   ├── Perfis.php              # Rota /perfis (HTML)
-│   └── Api.php                 # Rota /api/{recurso} (JSON)
-├── traits/
-│   ├── trait_Template.php      # Trait de template
-│   ├── trait_Response.php      # Trait de resposta JSON
-│   └── trait_Seguranca.php     # Trait de segurança (ACCESS)
+│   ├── Api.php                 # Rota /api/{recurso} (JSON)
+│   └── Auth.php                # Rotas /login, /cadastro, /logout (HTML)
 ├── config/
 │   └── database.php            # Config/conexão com banco
 ├── views/
 │   ├── templates.php           # topo()/rodape() e helpers
+│   ├── auth.php                # Views de login/cadastro
 │   ├── posts.php               # View de posts
 │   ├── categorias.php          # View de categorias
 │   ├── usuarios.php            # View de usuários
 │   ├── comentarios.php         # View de comentários
 │   └── perfis.php              # View de perfis
 ├── src/
-│   ├── database.php            # Shim p/ config/database.php
 │   └── models/                 # Models (CRUD)
 ├── sql/
 │   └── blogpost.sql            # Script do banco de dados

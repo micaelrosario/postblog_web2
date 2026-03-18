@@ -3,17 +3,43 @@
 class Usuario {
 
     private $conexao;
+    private $colunaLogin;
 
     public function __construct($conexao) {
         $this->conexao = $conexao;
+        $this->colunaLogin = $this->detectarColunaLogin();
+    }
+
+    private function detectarColunaLogin(): string {
+        try {
+            $stmt = $this->conexao->query("SHOW COLUMNS FROM usuarios LIKE 'username'");
+            if ($stmt && $stmt->fetch(PDO::FETCH_ASSOC)) {
+                return 'username';
+            }
+
+            $stmt = $this->conexao->query("SHOW COLUMNS FROM usuarios LIKE 'usuario'");
+            if ($stmt && $stmt->fetch(PDO::FETCH_ASSOC)) {
+                return 'usuario';
+            }
+        } catch (Throwable $e) {
+            // Ignora e mantém padrão
+        }
+
+        return 'username';
+    }
+
+    private function colunaLoginSql(): string {
+        return $this->colunaLogin === 'usuario' ? 'usuario' : 'username';
     }
 
     public function listar() {
-        return $this->conexao->query("SELECT * FROM usuarios ORDER BY id DESC");
+        $col = $this->colunaLoginSql();
+        return $this->conexao->query("SELECT id, {$col} AS username, first_name, last_name, email, criado_em FROM usuarios ORDER BY id DESC");
     }
 
     public function criar($dados) {
-        $sql = "INSERT INTO usuarios (username, first_name, last_name, email, senha)
+        $col = $this->colunaLoginSql();
+        $sql = "INSERT INTO usuarios ({$col}, first_name, last_name, email, senha)
                 VALUES (:username, :first_name, :last_name, :email, :senha)";
         $stmt = $this->conexao->prepare($sql);
         return $stmt->execute([
@@ -26,13 +52,24 @@ class Usuario {
     }
 
     public function buscarPorId($id) {
-        $stmt = $this->conexao->prepare("SELECT * FROM usuarios WHERE id=:id");
+        $col = $this->colunaLoginSql();
+        $stmt = $this->conexao->prepare("SELECT id, {$col} AS username, first_name, last_name, email, criado_em FROM usuarios WHERE id=:id");
         $stmt->execute(['id'=>$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function buscarPorUsername(string $username): ?array {
+        $col = $this->colunaLoginSql();
+        $stmt = $this->conexao->prepare("SELECT id, {$col} AS username, first_name, last_name, email, senha, criado_em FROM usuarios WHERE {$col} = :username LIMIT 1");
+        $stmt->execute(['username' => $username]);
+        $registro = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $registro ?: null;
+    }
+
     public function atualizar($id, $dados) {
-        $sql = "UPDATE usuarios SET username=:username, first_name=:first_name, 
+        $col = $this->colunaLoginSql();
+        $sql = "UPDATE usuarios SET {$col}=:username, first_name=:first_name, 
                 last_name=:last_name, email=:email WHERE id=:id";
         $stmt = $this->conexao->prepare($sql);
         return $stmt->execute([

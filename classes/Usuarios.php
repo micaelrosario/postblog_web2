@@ -22,27 +22,41 @@ class Usuarios
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
         $modeloUsuario = new Usuario($conexao);
 
-        topo('Usuários');
+        $idEdicao = (int)($_GET['edit'] ?? 0);
+        $usuarioEdicao = $idEdicao > 0 ? $modeloUsuario->get($idEdicao) : null;
+
+        $usuarios = $modeloUsuario->get();
+
+        $acaoFormulario = $usuarioEdicao
+            ? Http::baseUrl('/usuarios/' . (int)($usuarioEdicao['id'] ?? 0))
+            : Http::baseUrl('/usuarios');
+
+        Layout::topo('Usuários');
 
         $mensagem = (string)($_GET['msg'] ?? '');
         if ($mensagem !== '') {
             $okUrl = (string)($_GET['ok'] ?? '0');
             $tipo = $okUrl === '1' ? 'success' : 'danger';
-            echo '<div class="alert alert-' . e($tipo) . '">' . e($mensagem) . '</div>';
+            echo '<div class="alert alert-' . Http::e($tipo) . '">' . Http::e($mensagem) . '</div>';
         }
 
-        require __DIR__ . '/../views/usuarios.php';
+        require_once __DIR__ . '/../views/usuarios.php';
+        UsuariosView::render([
+            'usuarioEdicao' => $usuarioEdicao,
+            'usuarios' => $usuarios,
+            'acaoFormulario' => $acaoFormulario,
+        ]);
 
-        rodape();
+        Layout::rodape();
     }
 
     public function post($segmentosUrl)
@@ -58,19 +72,21 @@ class Usuarios
             $conexao = $this->conectar();
         } catch (Exception $e) {
             http_response_code(500);
-            topo('Erro');
+            Layout::topo('Erro');
             echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . e($e->getMessage()) . '</pre>';
-            rodape();
+            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+            Layout::rodape();
             return;
         }
 
         $modeloUsuario = new Usuario($conexao);
 
-        $sucesso = (bool)$modeloUsuario->post($_POST);
+        // Não aplica trim em "senha" para não alterar a senha digitada.
+        $dadosPost = Http::limparArray((array)$_POST, ['naoTrim' => ['senha']]);
+        $sucesso = (bool)$modeloUsuario->post($dadosPost);
         $mensagem = $sucesso ? 'Usuário criado com sucesso.' : 'Erro ao criar usuário.';
 
-        header('Location: ' . baseUrl('/usuarios') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), true, 303);
+        Http::redirect(Http::baseUrl('/usuarios') . '?ok=' . ($sucesso ? '1' : '0') . '&msg=' . rawurlencode($mensagem), 303);
         exit;
     }
 
@@ -78,7 +94,7 @@ class Usuarios
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -86,14 +102,14 @@ class Usuarios
             $conexao = $this->conectar();
             $modeloUsuario = new Usuario($conexao);
 
-            $dadosPut = lerDadosCorpo();
+            $dadosPut = Http::lerDadosCorpoLimpo(['naoTrim' => ['senha']]);
 
             $sucesso = (bool)$modeloUsuario->put($id, $dadosPut);
             $mensagem = $sucesso ? 'Usuário atualizado com sucesso.' : 'Erro ao atualizar usuário.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 
@@ -101,7 +117,7 @@ class Usuarios
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
             return;
         }
 
@@ -112,9 +128,9 @@ class Usuarios
             $sucesso = (bool)$modeloUsuario->delete($id);
             $mensagem = $sucesso ? 'Usuário removido com sucesso.' : 'Erro ao remover usuário.';
 
-            jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
+            Http::jsonResponse(['sucesso' => $sucesso, 'mensagem' => $mensagem], 200);
         } catch (Exception $e) {
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], 500);
         }
     }
 }

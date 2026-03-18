@@ -9,6 +9,86 @@ class Api
         header('Access-Control-Allow-Headers: Content-Type');
     }
 
+    private function garantirSessaoIniciada(): void
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+    }
+
+    private function apiLogin(): void
+    {
+        $metodo = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        if ($metodo !== 'POST') {
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Método HTTP não suportado.'], 405);
+            return;
+        }
+
+        $dados = Http::lerDadosCorpo();
+        if (empty($dados)) {
+            $dados = (array)$_POST;
+        }
+
+        $dados = Http::limparArray((array)$dados, ['naoTrim' => ['senha']]);
+
+        $username = trim((string)($dados['username'] ?? ''));
+        $senha = (string)($dados['senha'] ?? '');
+
+        if ($username === '' || $senha === '') {
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Username e senha são obrigatórios.'], 400);
+            return;
+        }
+
+        try {
+            $conexao = (new Database())->conectar();
+            $modeloUsuario = new Usuario($conexao);
+
+            $usuario = $modeloUsuario->buscarPorUsername($username);
+
+            if (!$usuario || !password_verify($senha, (string)($usuario['senha'] ?? ''))) {
+                Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Credenciais inválidas.'], 401);
+                return;
+            }
+
+            $this->garantirSessaoIniciada();
+            session_regenerate_id(true);
+            $_SESSION['usuario_id'] = (int)($usuario['id'] ?? 0);
+            $_SESSION['username'] = (string)($usuario['username'] ?? '');
+            $_SESSION['login'] = (string)($usuario['username'] ?? '');
+            // Mantém "senha" na sessão conforme solicitado (armazenando o HASH do banco, não a senha em texto).
+            $_SESSION['senha'] = (string)($usuario['senha'] ?? '');
+
+            Http::jsonResponse([
+                'sucesso' => true,
+                'mensagem' => 'Login efetuado.',
+                'usuario' => [
+                    'id' => (int)($usuario['id'] ?? 0),
+                    'username' => (string)($usuario['username'] ?? ''),
+                ],
+            ], 200);
+        } catch (Exception $e) {
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Erro ao efetuar login.'], 500);
+        }
+    }
+
+    private function apiLogout(): void
+    {
+        $metodo = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        if ($metodo !== 'POST') {
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Método HTTP não suportado.'], 405);
+            return;
+        }
+
+        $this->garantirSessaoIniciada();
+        $_SESSION = [];
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_destroy();
+        }
+
+        Http::jsonResponse(['sucesso' => true, 'mensagem' => 'Logout efetuado.'], 200);
+    }
+
     public function options($segmentosUrl)
     {
         $this->cors();
@@ -39,12 +119,25 @@ class Api
     {
         $this->cors();
 
+        $this->garantirSessaoIniciada();
+
+        // Recurso vem de /api/{recurso} (recomendado) ou ?resource=... (compatibilidade).
         $recurso = '';
         if (isset($segmentosUrl[1]) && $segmentosUrl[1] !== '') {
             $recurso = strtolower(trim((string)$segmentosUrl[1]));
         }
         if ($recurso === '') {
             $recurso = strtolower(trim((string)($_GET['resource'] ?? '')));
+        }
+
+        if ($recurso === 'login') {
+            $this->apiLogin();
+            return;
+        }
+
+        if ($recurso === 'logout') {
+            $this->apiLogout();
+            return;
         }
 
         $mapaRecursos = [
@@ -111,7 +204,7 @@ class Api
         ];
 
         if ($recurso === '' || !isset($mapaRecursos[$recurso])) {
-            jsonResponse([
+            Http::jsonResponse([
                 'sucesso' => false,
                 'mensagem' => 'Recurso inválido. Use /api/posts|categorias|usuarios|comentarios|perfil_autor ou ?resource=...',
             ], 404);
@@ -120,14 +213,27 @@ class Api
 
         $config = $mapaRecursos[$recurso];
 
+        $metodo = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+
+        if ($metodo === 'HEAD') {
+            $metodo = 'GET';
+        }
+
+        if (empty($_SESSION['usuario_id']) && $metodo !== 'GET') {
+            Http::jsonResponse([
+                'sucesso' => false,
+                'mensagem' => 'Não autenticado.',
+            ], 401);
+            return;
+        }
+
         try {
             $conexao = (new Database())->conectar();
 
             $nomeClasse = (string)$config['class'];
             $modelo = new $nomeClasse($conexao);
 
-            $metodo = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
-
+            // ID pode vir de /api/{recurso}/{id} ou de ?id=... (compatibilidade).
             $id = null;
             if (isset($segmentosUrl[2]) && $segmentosUrl[2] !== '' && ctype_digit((string)$segmentosUrl[2])) {
                 $id = (int)$segmentosUrl[2];
@@ -141,20 +247,23 @@ class Api
 
                 if ($id !== null) {
                     if ($resultado === null) {
-                        jsonResponse(['erro' => $config['notFound']], 200);
+                        Http::jsonResponse(['erro' => $config['notFound']], 200);
                         return;
                     }
-                    jsonResponse($resultado, 200);
+                    Http::jsonResponse($resultado, 200);
                     return;
                 }
 
-                jsonResponse($resultado, 200);
+                Http::jsonResponse($resultado, 200);
                 return;
             }
 
             if ($metodo === 'POST') {
-                $sucesso = (bool)$modelo->post($_POST);
-                jsonResponse([
+                $dadosPost = !empty($_POST) ? (array)$_POST : (array)Http::lerDadosCorpo();
+                $dadosPost = Http::limparArray((array)$dadosPost, ['naoTrim' => ['senha']]);
+
+                $sucesso = (bool)$modelo->post($dadosPost);
+                Http::jsonResponse([
                     'sucesso' => $sucesso,
                     'mensagem' => $sucesso ? $config['messages']['post_ok'] : $config['messages']['post_fail'],
                 ], 200);
@@ -163,15 +272,15 @@ class Api
 
             if ($metodo === 'PUT') {
                 if ($id === null) {
-                    jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+                    Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
                     return;
                 }
 
-                $dadosPut = lerDadosCorpo();
+                $dadosPut = Http::lerDadosCorpoLimpo(['naoTrim' => ['senha']]);
 
                 $sucesso = (bool)$modelo->put($id, (array)$dadosPut);
 
-                jsonResponse([
+                Http::jsonResponse([
                     'sucesso' => $sucesso,
                     'mensagem' => $sucesso ? $config['messages']['put_ok'] : $config['messages']['put_fail'],
                 ], 200);
@@ -180,22 +289,22 @@ class Api
 
             if ($metodo === 'DELETE') {
                 if ($id === null) {
-                    jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
+                    Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Parâmetro id é obrigatório.'], 400);
                     return;
                 }
 
                 $sucesso = (bool)$modelo->delete($id);
 
-                jsonResponse([
+                Http::jsonResponse([
                     'sucesso' => $sucesso,
                     'mensagem' => $sucesso ? $config['messages']['delete_ok'] : $config['messages']['delete_fail'],
                 ], 200);
                 return;
             }
 
-            jsonResponse(['sucesso' => false, 'mensagem' => 'Método HTTP não suportado.'], 405);
+            Http::jsonResponse(['sucesso' => false, 'mensagem' => 'Método HTTP não suportado.'], 405);
         } catch (Exception $e) {
-            jsonResponse([
+            Http::jsonResponse([
                 'sucesso' => false,
                 'mensagem' => 'Erro: ' . $e->getMessage(),
             ], 500);
