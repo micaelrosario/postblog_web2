@@ -1,62 +1,73 @@
 <?php
 
-class Categoria {
+class Categoria
+{
+    private PDO $conexao;
 
-    private $conexao;
-
-    public function __construct($conexao) {
+    public function __construct(PDO $conexao)
+    {
         $this->conexao = $conexao;
     }
 
-    public function listar() {
-        return $this->conexao->query("SELECT * FROM categoria ORDER BY id ASC");
+    public function listar()
+    {
+        return $this->conexao->query('SELECT * FROM categoria ORDER BY id ASC');
     }
 
-    public function criar($dados) {
-        $stmt = $this->conexao->prepare("INSERT INTO categoria (nome) VALUES (:nome)");
+    public function criar(array $dados): bool
+    {
+        $stmt = $this->conexao->prepare('INSERT INTO categoria (nome) VALUES (:nome)');
         return $stmt->execute([
             'nome' => $dados['nome'] ?? '',
         ]);
     }
 
-    public function buscarPorId($id) {
-        $stmt = $this->conexao->prepare("SELECT * FROM categoria WHERE id = :id");
+    public function buscarPorId(int $id): ?array
+    {
+        $stmt = $this->conexao->prepare('SELECT * FROM categoria WHERE id = :id');
         $stmt->execute(['id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $registro = $stmt->fetch();
+        return $registro ?: null;
     }
 
-    public function atualizar($id, $dados) {
-        $stmt = $this->conexao->prepare("UPDATE categoria SET nome = :nome WHERE id = :id");
+    public function atualizar(int $id, array $dados): bool
+    {
+        $stmt = $this->conexao->prepare('UPDATE categoria SET nome = :nome WHERE id = :id');
         return $stmt->execute([
             'id' => $id,
             'nome' => $dados['nome'] ?? '',
         ]);
     }
 
-    public function deletar($id) {
-        $stmt = $this->conexao->prepare("DELETE FROM categoria WHERE id = :id");
+    public function deletar(int $id): bool
+    {
+        $stmt = $this->conexao->prepare('DELETE FROM categoria WHERE id = :id');
         return $stmt->execute(['id' => $id]);
     }
 
     // Padrão simples (para o roteador central): GET/POST/PUT/DELETE
-    public function get($id = null) {
+    public function get($id = null)
+    {
         if ($id === null) {
-            return $this->listar()->fetchAll(PDO::FETCH_ASSOC);
+            return $this->listar()->fetchAll();
         }
 
-        $registro = $this->buscarPorId($id);
-        return $registro ?: null;
+        return $this->buscarPorId((int)$id);
     }
 
-    public function post($dados) {
-        return $this->criar($dados);
+    public function post($dados)
+    {
+        return $this->criar((array)$dados);
     }
 
-    public function put($id, $dados) {
-        return $this->atualizar($id, $dados);
+    public function put($id, $dados)
+    {
+        return $this->atualizar((int)$id, (array)$dados);
     }
 
-    public function delete($id) {
-        return $this->deletar($id);
+    public function delete($id)
+    {
+        return $this->deletar((int)$id);
     }
 }

@@ -2,7 +2,7 @@
 
 class Categorias
 {
-    private function obterId($segmentosUrl)
+    private function obterId(array $segmentosUrl): int
     {
         if (isset($segmentosUrl[1]) && ctype_digit((string)$segmentosUrl[1])) {
             return (int)$segmentosUrl[1];
@@ -11,21 +11,34 @@ class Categorias
         return 0;
     }
 
-    private function conectar()
+    private function conectar(): PDO
     {
         return (new Database())->conectar();
     }
 
-    public function get($segmentosUrl)
+    private function renderErroConexao(Exception $e): void
+    {
+        http_response_code(500);
+        Layout::topo('Erro');
+        echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
+        echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+        Layout::rodape();
+    }
+
+    private function conectarOuRenderErro(): ?PDO
     {
         try {
-            $conexao = $this->conectar();
+            return $this->conectar();
         } catch (Exception $e) {
-            http_response_code(500);
-            Layout::topo('Erro');
-            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
-            Layout::rodape();
+            $this->renderErroConexao($e);
+            return null;
+        }
+    }
+
+    public function get(array $segmentosUrl): void
+    {
+        $conexao = $this->conectarOuRenderErro();
+        if (!$conexao) {
             return;
         }
 
@@ -52,7 +65,7 @@ class Categorias
         Layout::rodape();
     }
 
-    public function post($segmentosUrl)
+    public function post(array $segmentosUrl): void
     {
         $id = $this->obterId($segmentosUrl);
         if ($id > 0) {
@@ -61,14 +74,8 @@ class Categorias
             return;
         }
 
-        try {
-            $conexao = $this->conectar();
-        } catch (Exception $e) {
-            http_response_code(500);
-            Layout::topo('Erro');
-            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
-            Layout::rodape();
+        $conexao = $this->conectarOuRenderErro();
+        if (!$conexao) {
             return;
         }
 
@@ -83,7 +90,7 @@ class Categorias
         exit;
     }
 
-    public function put($segmentosUrl)
+    public function put(array $segmentosUrl): void
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
@@ -106,7 +113,7 @@ class Categorias
         }
     }
 
-    public function delete($segmentosUrl)
+    public function delete(array $segmentosUrl): void
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {

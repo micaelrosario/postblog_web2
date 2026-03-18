@@ -7,14 +7,28 @@ final class Auth
         return (new Database())->conectar();
     }
 
+    private function iniciarSessaoUsuario(array $usuario): void
+    {
+        session_regenerate_id(true);
+
+        $_SESSION['usuario_id'] = (int)($usuario['id'] ?? 0);
+
+        $username = (string)($usuario['username'] ?? '');
+        $_SESSION['username'] = $username;
+        $_SESSION['login'] = $username;
+
+        // Mantém "senha" na sessão conforme solicitado (armazenando o HASH do banco, não a senha em texto).
+        $_SESSION['senha'] = (string)($usuario['senha'] ?? '');
+    }
+
     private function rotaAtual(array $segmentosUrl): string
     {
         return strtolower((string)($segmentosUrl[0] ?? 'login'));
     }
 
-    public function get($segmentosUrl)
+    public function get(array $segmentosUrl): void
     {
-        $rota = $this->rotaAtual((array)$segmentosUrl);
+        $rota = $this->rotaAtual($segmentosUrl);
 
         if ($rota === 'logout') {
             $this->logout();
@@ -41,9 +55,9 @@ final class Auth
         Layout::rodape();
     }
 
-    public function post($segmentosUrl)
+    public function post(array $segmentosUrl): void
     {
-        $rota = $this->rotaAtual((array)$segmentosUrl);
+        $rota = $this->rotaAtual($segmentosUrl);
 
         if ($rota === 'login') {
             $this->handleLogin();
@@ -87,12 +101,7 @@ final class Auth
                 return;
             }
 
-            session_regenerate_id(true);
-            $_SESSION['usuario_id'] = (int)($usuario['id'] ?? 0);
-            $_SESSION['username'] = (string)($usuario['username'] ?? '');
-            $_SESSION['login'] = (string)($usuario['username'] ?? '');
-            // Mantém "senha" na sessão conforme solicitado (armazenando o HASH do banco, não a senha em texto).
-            $_SESSION['senha'] = (string)($usuario['senha'] ?? '');
+            $this->iniciarSessaoUsuario($usuario);
 
             Http::redirect(Http::baseUrl('/posts'), 303);
         } catch (PDOException $e) {
@@ -148,12 +157,7 @@ final class Auth
                 return;
             }
 
-            session_regenerate_id(true);
-            $_SESSION['usuario_id'] = (int)($usuario['id'] ?? 0);
-            $_SESSION['username'] = (string)($usuario['username'] ?? '');
-            $_SESSION['login'] = (string)($usuario['username'] ?? '');
-            // Mantém "senha" na sessão conforme solicitado (armazenando o HASH do banco, não a senha em texto).
-            $_SESSION['senha'] = (string)($usuario['senha'] ?? '');
+            $this->iniciarSessaoUsuario($usuario);
 
             Http::setFlash('Conta criada e login efetuado.', 'success');
             Http::redirect(Http::baseUrl('/posts'), 303);

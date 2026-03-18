@@ -1,25 +1,24 @@
 <?php
 
-class Usuario {
+class Usuario
+{
+    private PDO $conexao;
+    private string $colunaLogin;
 
-    private $conexao;
-    private $colunaLogin;
-
-    public function __construct($conexao) {
+    public function __construct(PDO $conexao)
+    {
         $this->conexao = $conexao;
         $this->colunaLogin = $this->detectarColunaLogin();
     }
 
-    private function detectarColunaLogin(): string {
+    private function detectarColunaLogin(): string
+    {
         try {
-            $stmt = $this->conexao->query("SHOW COLUMNS FROM usuarios LIKE 'username'");
-            if ($stmt && $stmt->fetch(PDO::FETCH_ASSOC)) {
-                return 'username';
-            }
-
-            $stmt = $this->conexao->query("SHOW COLUMNS FROM usuarios LIKE 'usuario'");
-            if ($stmt && $stmt->fetch(PDO::FETCH_ASSOC)) {
-                return 'usuario';
+            foreach (['username', 'usuario'] as $coluna) {
+                $stmt = $this->conexao->query("SHOW COLUMNS FROM usuarios LIKE '{$coluna}'");
+                if ($stmt && $stmt->fetch()) {
+                    return $coluna;
+                }
             }
         } catch (Throwable $e) {
             // Ignora e mantém padrão
@@ -28,75 +27,88 @@ class Usuario {
         return 'username';
     }
 
-    private function colunaLoginSql(): string {
+    private function colunaLoginSql(): string
+    {
         return $this->colunaLogin === 'usuario' ? 'usuario' : 'username';
     }
 
-    public function listar() {
+    public function listar()
+    {
         $col = $this->colunaLoginSql();
         return $this->conexao->query("SELECT id, {$col} AS username, first_name, last_name, email, criado_em FROM usuarios ORDER BY id DESC");
     }
 
-    public function criar($dados) {
+    public function criar(array $dados): bool
+    {
         $col = $this->colunaLoginSql();
         $sql = "INSERT INTO usuarios ({$col}, first_name, last_name, email, senha)
                 VALUES (:username, :first_name, :last_name, :email, :senha)";
+
         $stmt = $this->conexao->prepare($sql);
         return $stmt->execute([
-            ':username' => $dados['username'],
-            ':first_name' => $dados['first_name'] ?? null,
-            ':last_name' => $dados['last_name'] ?? null,
-            ':email' => $dados['email'] ?? null,
-            ':senha' => $dados['senha']
+            'username' => $dados['username'],
+            'first_name' => $dados['first_name'] ?? null,
+            'last_name' => $dados['last_name'] ?? null,
+            'email' => $dados['email'] ?? null,
+            'senha' => $dados['senha'],
         ]);
     }
 
-    public function buscarPorId($id) {
+    public function buscarPorId(int $id): ?array
+    {
         $col = $this->colunaLoginSql();
         $stmt = $this->conexao->prepare("SELECT id, {$col} AS username, first_name, last_name, email, criado_em FROM usuarios WHERE id=:id");
-        $stmt->execute(['id'=>$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->execute(['id' => $id]);
+
+        $registro = $stmt->fetch();
+        return $registro ?: null;
     }
 
-    public function buscarPorUsername(string $username): ?array {
+    public function buscarPorUsername(string $username): ?array
+    {
         $col = $this->colunaLoginSql();
         $stmt = $this->conexao->prepare("SELECT id, {$col} AS username, first_name, last_name, email, senha, criado_em FROM usuarios WHERE {$col} = :username LIMIT 1");
         $stmt->execute(['username' => $username]);
-        $registro = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        $registro = $stmt->fetch();
         return $registro ?: null;
     }
 
-    public function atualizar($id, $dados) {
+    public function atualizar(int $id, array $dados): bool
+    {
         $col = $this->colunaLoginSql();
-        $sql = "UPDATE usuarios SET {$col}=:username, first_name=:first_name, 
+        $sql = "UPDATE usuarios SET {$col}=:username, first_name=:first_name,
                 last_name=:last_name, email=:email WHERE id=:id";
+
         $stmt = $this->conexao->prepare($sql);
         return $stmt->execute([
-            ':username' => $dados['username'],
-            ':first_name' => $dados['first_name'] ?? null,
-            ':last_name' => $dados['last_name'] ?? null,
-            ':email' => $dados['email'] ?? null,
-            ':id' => $id
+            'username' => $dados['username'],
+            'first_name' => $dados['first_name'] ?? null,
+            'last_name' => $dados['last_name'] ?? null,
+            'email' => $dados['email'] ?? null,
+            'id' => $id,
         ]);
     }
 
-    public function deletar($id) {
-        $stmt = $this->conexao->prepare("DELETE FROM usuarios WHERE id=:id");
-        return $stmt->execute(['id'=>$id]);
+    public function deletar(int $id): bool
+    {
+        $stmt = $this->conexao->prepare('DELETE FROM usuarios WHERE id=:id');
+        return $stmt->execute(['id' => $id]);
     }
 
     // Padrão simples (para o roteador central): GET/POST/PUT/DELETE
-    public function get($id = null) {
+    public function get($id = null)
+    {
         if ($id === null) {
-            return $this->listar()->fetchAll(PDO::FETCH_ASSOC);
+            return $this->listar()->fetchAll();
         }
 
-        $registro = $this->buscarPorId($id);
-        return $registro ?: null;
+        return $this->buscarPorId((int)$id);
     }
 
-    public function post($dados) {
+    public function post($dados)
+    {
+        $dados = (array)$dados;
         if (!isset($dados['senha'])) {
             return false;
         }
@@ -105,11 +117,13 @@ class Usuario {
         return $this->criar($dados);
     }
 
-    public function put($id, $dados) {
-        return $this->atualizar($id, $dados);
+    public function put($id, $dados)
+    {
+        return $this->atualizar((int)$id, (array)$dados);
     }
 
-    public function delete($id) {
-        return $this->deletar($id);
+    public function delete($id)
+    {
+        return $this->deletar((int)$id);
     }
 }

@@ -2,7 +2,7 @@
 
 class Posts
 {
-    private function obterId($segmentosUrl)
+    private function obterId(array $segmentosUrl): int
     {
         if (isset($segmentosUrl[1]) && ctype_digit((string)$segmentosUrl[1])) {
             return (int)$segmentosUrl[1];
@@ -11,42 +11,32 @@ class Posts
         return 0;
     }
 
-    private function conectar()
+    private function conectar(): PDO
     {
         return (new Database())->conectar();
     }
 
-    public function get($segmentosUrl)
+    private function renderErroConexao(Exception $e): void
     {
-        $idDetalhes = $this->obterId($segmentosUrl);
-        if ($idDetalhes > 0) {
-            $this->renderDetalhes($idDetalhes);
-            return;
-        }
+        http_response_code(500);
+        Layout::topo('Erro');
+        echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
+        echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
+        Layout::rodape();
+    }
 
+    private function conectarOuRenderErro(): ?PDO
+    {
         try {
-            $conexao = $this->conectar();
+            return $this->conectar();
         } catch (Exception $e) {
-            http_response_code(500);
-            Layout::topo('Erro');
-            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
-            Layout::rodape();
-            return;
+            $this->renderErroConexao($e);
+            return null;
         }
+    }
 
-        $modeloPost = new Post($conexao);
-        $modeloCategoria = new Categoria($conexao);
-        $modeloUsuario = new Usuario($conexao);
-
-        // Visão do leitor: não exibe formulário nem ações, mesmo se estiver logado.
-        $usuarioAutenticado = false;
-        $postEdicao = null;
-
-        $usuarios = $modeloUsuario->get();
-        $categorias = $modeloCategoria->get();
-        $posts = $modeloPost->get();
-
+    private function usuarioPorId(array $usuarios): array
+    {
         $usuarioPorId = [];
         foreach ($usuarios as $usuario) {
             $id = (int)($usuario['id'] ?? 0);
@@ -63,6 +53,11 @@ class Posts
             $usuarioPorId[$id] = $nomeExibicao;
         }
 
+        return $usuarioPorId;
+    }
+
+    private function categoriaPorId(array $categorias): array
+    {
         $categoriaPorId = [];
         foreach ($categorias as $categoria) {
             $id = (int)($categoria['id'] ?? 0);
@@ -73,9 +68,47 @@ class Posts
             $categoriaPorId[$id] = (string)($categoria['nome'] ?? '');
         }
 
-        $acaoFormulario = $postEdicao
-            ? Http::baseUrl('/posts/' . (int)($postEdicao['id'] ?? 0))
-            : Http::baseUrl('/posts');
+        return $categoriaPorId;
+    }
+
+    private function renderPostNaoEncontrado(): void
+    {
+        http_response_code(404);
+        Layout::topo('Post não encontrado');
+        echo '<div class="alert alert-warning">Post não encontrado.</div>';
+        echo '<a class="btn btn-primary" href="' . Http::e(Http::baseUrl('/inicio')) . '">Ir para Início</a>';
+        Layout::rodape();
+    }
+
+    public function get(array $segmentosUrl): void
+    {
+        $idDetalhes = $this->obterId($segmentosUrl);
+        if ($idDetalhes > 0) {
+            $this->renderDetalhes($idDetalhes);
+            return;
+        }
+
+        $conexao = $this->conectarOuRenderErro();
+        if (!$conexao) {
+            return;
+        }
+
+        $modeloPost = new Post($conexao);
+        $modeloCategoria = new Categoria($conexao);
+        $modeloUsuario = new Usuario($conexao);
+
+        // Visão do leitor: não exibe formulário nem ações, mesmo se estiver logado.
+        $usuarioAutenticado = false;
+        $postEdicao = null;
+
+        $usuarios = $modeloUsuario->get();
+        $categorias = $modeloCategoria->get();
+        $posts = $modeloPost->get();
+
+        $usuarioPorId = $this->usuarioPorId($usuarios);
+        $categoriaPorId = $this->categoriaPorId($categorias);
+
+        $acaoFormulario = Http::baseUrl('/posts');
 
         $rota = strtolower((string)($segmentosUrl[0] ?? ''));
         $tituloPagina = $rota === 'inicio' ? "Filmmakers' Blog" : 'Início';
@@ -101,14 +134,8 @@ class Posts
 
     private function renderDetalhes(int $idPost): void
     {
-        try {
-            $conexao = $this->conectar();
-        } catch (Exception $e) {
-            http_response_code(500);
-            Layout::topo('Erro');
-            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
-            Layout::rodape();
+        $conexao = $this->conectarOuRenderErro();
+        if (!$conexao) {
             return;
         }
 
@@ -119,11 +146,7 @@ class Posts
 
         $post = $modeloPost->get($idPost);
         if (!$post) {
-            http_response_code(404);
-            Layout::topo('Post não encontrado');
-            echo '<div class="alert alert-warning">Post não encontrado.</div>';
-            echo '<a class="btn btn-primary" href="' . Http::e(Http::baseUrl('/inicio')) . '">Ir para Início</a>';
-            Layout::rodape();
+            $this->renderPostNaoEncontrado();
             return;
         }
 
@@ -131,31 +154,8 @@ class Posts
         $categorias = $modeloCategoria->get();
         $comentarios = $modeloComentario->listarPorPostId($idPost);
 
-        $usuarioPorId = [];
-        foreach ($usuarios as $usuario) {
-            $id = (int)($usuario['id'] ?? 0);
-            if ($id <= 0) {
-                continue;
-            }
-
-            $nomeExibicao = (string)($usuario['username'] ?? '');
-            if ($nomeExibicao === '') {
-                $nome = trim((string)($usuario['first_name'] ?? '') . ' ' . (string)($usuario['last_name'] ?? ''));
-                $nomeExibicao = $nome !== '' ? $nome : ('Usuário #' . $id);
-            }
-
-            $usuarioPorId[$id] = $nomeExibicao;
-        }
-
-        $categoriaPorId = [];
-        foreach ($categorias as $categoria) {
-            $id = (int)($categoria['id'] ?? 0);
-            if ($id <= 0) {
-                continue;
-            }
-
-            $categoriaPorId[$id] = (string)($categoria['nome'] ?? '');
-        }
+        $usuarioPorId = $this->usuarioPorId($usuarios);
+        $categoriaPorId = $this->categoriaPorId($categorias);
 
         $titulo = (string)($post['titulo'] ?? 'Post');
         Layout::topo($titulo !== '' ? $titulo : 'Post');
@@ -175,7 +175,7 @@ class Posts
         Layout::rodape();
     }
 
-    public function post($segmentosUrl)
+    public function post(array $segmentosUrl): void
     {
         $id = $this->obterId($segmentosUrl);
 
@@ -191,14 +191,8 @@ class Posts
             return;
         }
 
-        try {
-            $conexao = $this->conectar();
-        } catch (Exception $e) {
-            http_response_code(500);
-            Layout::topo('Erro');
-            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
-            Layout::rodape();
+        $conexao = $this->conectarOuRenderErro();
+        if (!$conexao) {
             return;
         }
 
@@ -231,25 +225,15 @@ class Posts
             exit;
         }
 
-        try {
-            $conexao = $this->conectar();
-        } catch (Exception $e) {
-            http_response_code(500);
-            Layout::topo('Erro');
-            echo '<div class="alert alert-danger">Falha ao conectar no banco de dados.</div>';
-            echo '<pre class="small text-muted mb-0">' . Http::e($e->getMessage()) . '</pre>';
-            Layout::rodape();
+        $conexao = $this->conectarOuRenderErro();
+        if (!$conexao) {
             return;
         }
 
         $modeloPost = new Post($conexao);
         $post = $modeloPost->get($idPost);
         if (!$post) {
-            http_response_code(404);
-            Layout::topo('Post não encontrado');
-            echo '<div class="alert alert-warning">Post não encontrado.</div>';
-            echo '<a class="btn btn-primary" href="' . Http::e(Http::baseUrl('/inicio')) . '">Ir para Início</a>';
-            Layout::rodape();
+            $this->renderPostNaoEncontrado();
             return;
         }
 
@@ -267,7 +251,7 @@ class Posts
         exit;
     }
 
-    public function put($segmentosUrl)
+    public function put(array $segmentosUrl): void
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
@@ -290,7 +274,7 @@ class Posts
         }
     }
 
-    public function delete($segmentosUrl)
+    public function delete(array $segmentosUrl): void
     {
         $id = $this->obterId($segmentosUrl);
         if ($id <= 0) {
