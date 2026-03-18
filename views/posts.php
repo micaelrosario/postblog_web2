@@ -85,7 +85,6 @@ final class PostsView
             <?php } ?>
 
             <div class="<?php echo $usuarioAutenticado ? 'col-lg-7' : 'col-lg-12'; ?>">
-                <h2 class="h5 mb-3">Lista</h2>
 
                 <?php if (count($posts) === 0) { ?>
                     <div class="alert alert-light border text-muted mb-0">Nenhum post encontrado.</div>

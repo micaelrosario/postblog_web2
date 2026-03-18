@@ -1,7 +1,6 @@
 <?php
 
 // Front controller: centraliza rotas HTML e API em um único ponto.
-
 require_once __DIR__ . '/views/templates.php';
 require_once __DIR__ . '/config/database.php';
 
@@ -24,12 +23,10 @@ require_once __DIR__ . '/classes/Perfis.php';
 require_once __DIR__ . '/classes/Api.php';
 require_once __DIR__ . '/classes/Auth.php';
 
-// Rota amigável via rewrite em ?url=...
 $urlBruta = trim((string)($_GET['url'] ?? ''), "/ \t\n\r\0\x0B");
 $urlBruta = trim($urlBruta, '/');
 
-// Fallback: quando não existe rewrite preenchendo ?url=..., derivar a rota da URL.
-// Isso evita loop de redirects ao rodar com `php -S ... index.php` ou setups sem rewrite.
+# Isso serve para casos onde a URL chega como /index.php/rota ou quando o .htaccess não está redirecionando corretamente.
 if ($urlBruta === '') {
     $caminhoRequest = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?? '/');
     $caminhoRequest = trim($caminhoRequest, '/');
@@ -55,15 +52,14 @@ if ($urlBruta === '') {
     }
 }
 
-// Segmentos da rota (ex.: /api/posts/1)
+// Serve para evitar criar rotas dinâmicas.
 $segmentosUrl = $urlBruta === '' ? [] : explode('/', $urlBruta);
 
-// Compatibilidade: quando a URL chega como /api/index.php/... (sem arquivo físico)
+// Código serve para casos onde a URL chega como /api/index.php/rota.
 if (strtolower((string)($segmentosUrl[0] ?? '')) === 'api' && strtolower((string)($segmentosUrl[1] ?? '')) === 'index.php') {
     array_splice($segmentosUrl, 1, 1);
 }
 
-// Compatibilidade: API via querystring (?resource=...)
 $recurso = strtolower(trim((string)($_GET['resource'] ?? '')));
 if ($recurso !== '' && $urlBruta === '') {
     $segmentosUrl = ['api', $recurso];
@@ -71,7 +67,7 @@ if ($recurso !== '' && $urlBruta === '') {
 
 $chaveRota = strtolower((string)($segmentosUrl[0] ?? ''));
 
-// Whitelist de rotas para evitar instanciar classes arbitrárias
+// Serve para evitar criar rotas dinâmicas. O nome da classe deve ser exatamente igual ao valor da rota (case-sensitive).
 $rotas = [
     '' => 'Posts',
     'home' => 'Posts',
@@ -129,6 +125,7 @@ $rotaPublicaHtml = in_array($chaveRota, $rotasPublicasHtml, true);
 $rotaPublicaSomenteLeitura = in_array($chaveRota, $rotasPublicasSomenteLeitura, true);
 $metodoSomenteLeitura = in_array($metodoRequisicao, ['GET', 'HEAD'], true);
 
+# Verificar se usuário está autenticado.
 if (!$usuarioAutenticado && $chaveRota !== 'api') {
     $permitirSemLogin = $rotaPublicaHtml || ($rotaPublicaSomenteLeitura && $metodoSomenteLeitura);
 
@@ -147,14 +144,10 @@ if (!$usuarioAutenticado && $chaveRota !== 'api') {
     }
 }
 
-// Proteção simples de CSRF para rotas HTML (sessão/cookies).
-// - Token gerado por sessão (meta + campo hidden nos forms)
-// - Validação em POST/PUT/DELETE
-// - Token pode vir via header X-CSRF-Token (necessário em DELETE via fetch)
+// Proteção contra CSRF para rotas HTML que modificam dados (POST, PUT, DELETE).
 if ($chaveRota !== 'api' && in_array($metodoRequisicao, ['POST', 'PUT', 'DELETE'], true)) {
     $tokenCsrf = trim((string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
 
-    // Para POST tradicional, permite enviar no corpo como campo hidden.
     if ($tokenCsrf === '' && $metodoRequisicao === 'POST') {
         $tokenCsrf = trim((string)($_POST['_csrf'] ?? ''));
     }
